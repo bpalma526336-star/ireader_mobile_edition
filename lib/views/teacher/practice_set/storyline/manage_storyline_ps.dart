@@ -133,40 +133,60 @@ class _ManageSLPSState extends State<ManageSLPS> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width <= 600;
     return Scaffold(
       appBar: AppBar(
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16), // 👈 adds right margin
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AddSlps(
-                      section: widget.section,
-                      schoolyear: widget.schoolyear,
+        actions: isMobile
+            ? [
+                IconButton(
+                  tooltip: 'Add practice set',
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddSlps(
+                          section: widget.section,
+                          schoolyear: widget.schoolyear,
+                        ),
+                      ),
+                    );
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.add),
+                ),
+              ]
+            : [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddSlps(
+                            section: widget.section,
+                            schoolyear: widget.schoolyear,
+                          ),
+                        ),
+                      );
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text("Add Practice Set"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.purple.shade600,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                     ),
                   ),
-                );
-                setState(() {});
-              },
-              icon: const Icon(Icons.add),
-              label: const Text("Add Practice Set"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.purple.shade600,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-              ),
-            ),
-          ),
-        ],
+              ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(

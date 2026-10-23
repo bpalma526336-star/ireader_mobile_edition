@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/readingcoordinator.dart';
@@ -7,10 +5,7 @@ import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
 import 'package:ireader_mobile_edition/theme.dart';
-import 'package:ireader_mobile_edition/views/admin/student/add_student.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/students/student_profile.dart';
-import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
-import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 
 class RCManageStudentScreen extends StatefulWidget {
   final SchoolYear schoolyear;
@@ -29,36 +24,12 @@ class RCManageStudentScreen extends StatefulWidget {
 }
 
 class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
-  String? _teacherName;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchTeacherName();
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchTeacherName() async {
-    final teacherSnapshot = await firestore
-        .collection('teachers')
-        .doc(widget.section.teacherid)
-        .get();
-    if (teacherSnapshot.exists && mounted) {
-      final d = teacherSnapshot.data()!;
-      setState(() {
-        final middle = (d['middlename'] as String?) ?? '';
-        _teacherName = middle.isEmpty
-            ? "${d['firstname']} ${d['lastname']}"
-            : "${d['firstname']} $middle ${d['lastname']}";
-      });
-    }
   }
 
   Widget _readingLevelBadge(String level) {
@@ -113,7 +84,9 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
 
   Widget _avatar(String name) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
-    final color = _avatarColors[name.codeUnitAt(0) % _avatarColors.length];
+    final color =
+        _avatarColors[(name.isEmpty ? 0 : name.codeUnitAt(0)) %
+            _avatarColors.length];
     return Container(
       width: 34,
       height: 34,
@@ -198,8 +171,94 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
   // ─── Table row ─────────────────────────────────────────────────────────────
 
   Widget _buildRow(Student student) {
+    final isMobile = MediaQuery.of(context).size.width <= 700;
     final fullName =
         '${student.firstname}${student.middlename != null && student.middlename!.isNotEmpty ? " ${student.middlename}" : ""} ${student.lastname}';
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _avatar(fullName),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fullName.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'LRN: ${student.lrn}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'View student profile',
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
+                  icon: const Icon(
+                    Icons.person_outline,
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RCStudentProfileScreen(
+                          student: student,
+                          section: widget.section,
+                          schoolyear: widget.schoolyear,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _readingLevelBadge(student.readlevel),
+                if (student.gradelevelread.isNotEmpty)
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text('Grade ${student.gradelevelread}'),
+                    avatar: const Icon(Icons.school_outlined, size: 16),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       color: Colors.white,
@@ -258,9 +317,15 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
           // ACTIONS
           SizedBox(
             width: 80,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: () {
+            child: IconButton(
+              tooltip: 'View student profile',
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              padding: EdgeInsets.zero,
+              icon: const Icon(
+                Icons.person_outline,
+                color: AppTheme.textSecondaryColor,
+              ),
+              onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -272,19 +337,6 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
                   ),
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppTheme.borderColor),
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  size: 15,
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
             ),
           ),
         ],
@@ -295,67 +347,107 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
   // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildToolbar(int shown, int total) {
+    final isMobile = MediaQuery.of(context).size.width <= 700;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        16,
+        isMobile ? 16 : 24,
+        12,
+      ),
       color: Colors.white,
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 38,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search students by name or LRN...',
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    size: 18,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.backgroundColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                      width: 1.5,
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 44,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Search students by name or LRN',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 10),
+                Text(
+                  '$shown of $total students',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'Search students by name or LRN...',
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 18,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.backgroundColor,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 0,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppTheme.borderColor,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppTheme.borderColor,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppTheme.primaryColor,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$shown of $total students',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$shown of $total students',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -471,15 +563,21 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      _buildTableHeader(),
+                      if (MediaQuery.of(context).size.width > 700)
+                        _buildTableHeader(),
                       Expanded(
                         child: ListView.separated(
-                          padding: EdgeInsets.zero,
+                          padding: MediaQuery.of(context).size.width <= 700
+                              ? const EdgeInsets.fromLTRB(16, 12, 16, 24)
+                              : EdgeInsets.zero,
                           itemCount: students.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: AppTheme.borderColor,
-                          ),
+                          separatorBuilder: (_, __) =>
+                              MediaQuery.of(context).size.width <= 700
+                              ? const SizedBox(height: 10)
+                              : const Divider(
+                                  height: 1,
+                                  color: AppTheme.borderColor,
+                                ),
                           itemBuilder: (_, index) => _buildRow(students[index]),
                         ),
                       ),

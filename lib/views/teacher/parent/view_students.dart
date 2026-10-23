@@ -108,6 +108,8 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
         ),
         title: Text(
           'Students of $parentName',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -208,9 +210,10 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
   }
 
   Widget _buildHeader(String parentName, int studentCount) {
+    final isMobile = MediaQuery.of(context).size.width <= 600;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -242,6 +245,8 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
               children: [
                 Text(
                   parentName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -299,7 +304,10 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
         : '?';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.of(context).size.width <= 600 ? 14 : 20,
+        vertical: 14,
+      ),
       child: Row(
         children: [
           CircleAvatar(
@@ -328,16 +336,16 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 5),
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Icon(
                       Icons.badge_outlined,
                       size: 14,
                       color: AppTheme.textSecondaryColor,
                     ),
-
-                    const SizedBox(width: 5),
-
                     Text(
                       'LRN: ${student.lrn}',
                       style: const TextStyle(
@@ -346,88 +354,56 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
                       ),
                     ),
 
-                    const SizedBox(width: 15),
                     FutureBuilder<Section?>(
                       future: getSection(student.sectionid),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const Text(
-                            'Section: Loading...',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                          return const _StudentDetailChip(
+                            icon: Icons.class_outlined,
+                            label: 'Section loading',
                           );
                         }
 
                         if (snapshot.hasError || snapshot.data == null) {
-                          return const Text(
-                            'Section: Not found',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                          return const _StudentDetailChip(
+                            icon: Icons.class_outlined,
+                            label: 'Section not found',
                           );
                         }
 
                         final section = snapshot.data!;
 
-                        return Text(
-                          'Section: '
-                          '${section.sectionname}',
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                        return _StudentDetailChip(
+                          icon: Icons.class_outlined,
+                          label: 'Section: ${section.sectionname}',
                         );
                       },
                     ),
-
-                    const SizedBox(width: 15),
-
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 14,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-
-                    const SizedBox(width: 15),
-
                     FutureBuilder<SchoolYear?>(
                       future: getSchoolYear(student.schoolyearid),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const Text(
-                            'School Year: Loading...',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                          return const _StudentDetailChip(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'School year loading',
                           );
                         }
 
                         if (snapshot.hasError || snapshot.data == null) {
-                          return const Text(
-                            'School Year: Not found',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                          return const _StudentDetailChip(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'School year not found',
                           );
                         }
 
                         final schoolYear = snapshot.data!;
 
-                        return Text(
-                          'School Year: '
-                          '${schoolYear.schoolyearstart}-'
-                          '${schoolYear.schoolyearend}',
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                        return _StudentDetailChip(
+                          icon: Icons.calendar_today_outlined,
+                          label:
+                              'School Year: ${schoolYear.schoolyearstart}-${schoolYear.schoolyearend}',
                         );
                       },
                     ),
@@ -455,6 +431,39 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StudentDetailChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _StudentDetailChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxLabelWidth = MediaQuery.of(context).size.width - 110;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppTheme.textSecondaryColor),
+        const SizedBox(width: 4),
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxLabelWidth < 120 ? 120 : maxLabelWidth,
+          ),
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

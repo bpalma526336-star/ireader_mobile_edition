@@ -6,6 +6,7 @@ import 'package:ireader_mobile_edition/model/teacher.dart';
 import 'package:ireader_mobile_edition/theme.dart';
 import 'package:ireader_mobile_edition/views/teacher/parent/add_parent.dart';
 import 'package:ireader_mobile_edition/views/teacher/parent/view_students.dart';
+import 'package:ireader_mobile_edition/views/teacher/teacher_mobile_header.dart';
 import 'package:ireader_mobile_edition/widgets/teacher_sidebar.dart';
 import 'package:ireader_mobile_edition/widgets/teacher_top_header.dart';
 
@@ -51,7 +52,9 @@ class _ManageParentsState extends State<ManageParents> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 900;
+    final isMobile = screenWidth <= 600;
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.backgroundColor,
@@ -77,15 +80,28 @@ class _ManageParentsState extends State<ManageParents> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TeacherHeader(
-                  teacher: widget.teacher,
-                  schoolyear: widget.schoolyear,
-                  onMenuPressed: isDesktop
-                      ? null
-                      : () => _scaffoldKey.currentState?.openDrawer(),
-                ),
+                if (isMobile)
+                  TeacherMobileHeader(
+                    teacher: widget.teacher,
+                    schoolyear: widget.schoolyear,
+                    onMenuPressed: () =>
+                        _scaffoldKey.currentState?.openDrawer(),
+                  )
+                else
+                  TeacherHeader(
+                    teacher: widget.teacher,
+                    schoolyear: widget.schoolyear,
+                    onMenuPressed: isDesktop
+                        ? null
+                        : () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
                 Container(
-                  padding: const EdgeInsets.fromLTRB(28, 14, 24, 14),
+                  padding: EdgeInsets.fromLTRB(
+                    isMobile ? 16 : 28,
+                    isMobile ? 16 : 14,
+                    isMobile ? 16 : 24,
+                    isMobile ? 16 : 14,
+                  ),
                   color: Colors.white,
                   child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,8 +172,10 @@ class _ManageParentsState extends State<ManageParents> {
 
                       return Column(
                         children: [
-                          _buildToolbar(),
-                          Expanded(child: _buildTable(parents)),
+                          _buildToolbar(isMobile: isMobile),
+                          Expanded(
+                            child: _buildTable(parents, isMobile: isMobile),
+                          ),
                         ],
                       );
                     },
@@ -171,7 +189,69 @@ class _ManageParentsState extends State<ManageParents> {
     );
   }
 
-  Widget _buildToolbar() {
+  Widget _buildToolbar({required bool isMobile}) {
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 44,
+              child: TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Search parents by name or access code',
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 20,
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.backgroundColor,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppTheme.borderColor),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _filterTab('All'),
+                  _filterTab('ACTIVE', label: 'Active'),
+                  _filterTab('INACTIVE', label: 'Inactive'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: _openAddParent,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Parent'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
       color: Colors.white,
@@ -184,7 +264,7 @@ class _ManageParentsState extends State<ManageParents> {
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Search teachers by name or email',
+                  hintText: 'Search parents by name or access code',
                   hintStyle: const TextStyle(
                     fontSize: 13,
                     color: AppTheme.textSecondaryColor,
@@ -282,7 +362,7 @@ class _ManageParentsState extends State<ManageParents> {
     );
   }
 
-  Widget _buildTable(List<Parent> parents) {
+  Widget _buildTable(List<Parent> parents, {required bool isMobile}) {
     if (parents.isEmpty) {
       return Center(
         child: Column(
@@ -303,6 +383,16 @@ class _ManageParentsState extends State<ManageParents> {
             ),
           ],
         ),
+      );
+    }
+
+    if (isMobile) {
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        itemCount: parents.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) =>
+            _buildRow(parents[index], isMobile: true),
       );
     }
 
@@ -375,7 +465,8 @@ class _ManageParentsState extends State<ManageParents> {
               itemCount: parents.length,
               separatorBuilder: (_, __) =>
                   const Divider(height: 1, color: AppTheme.borderColor),
-              itemBuilder: (context, index) => _buildRow(parents[index]),
+              itemBuilder: (context, index) =>
+                  _buildRow(parents[index], isMobile: false),
             ),
           ),
         ],
@@ -383,7 +474,7 @@ class _ManageParentsState extends State<ManageParents> {
     );
   }
 
-  Widget _buildRow(Parent parent) {
+  Widget _buildRow(Parent parent, {required bool isMobile}) {
     final isActive = parent.status == 'ACTIVE';
     final fullName =
         '${parent.firstname} ${parent.middlename != null && parent.middlename!.isNotEmpty ? "${parent.middlename} " : ""}${parent.lastname}'
@@ -401,7 +492,99 @@ class _ManageParentsState extends State<ManageParents> {
       Color(0xFF8B5CF6),
     ];
     final avatarColor =
-        avatarColors[fullName.codeUnitAt(0) % avatarColors.length];
+        avatarColors[(fullName.isEmpty ? 0 : fullName.codeUnitAt(0)) %
+            avatarColors.length];
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: avatarColor,
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    fullName.isEmpty ? 'Unnamed parent' : fullName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _statusBadge(isActive),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Divider(height: 1, color: AppTheme.borderColor),
+            ),
+            const Text(
+              'ACCESS CODE',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSecondaryColor,
+                letterSpacing: 0.7,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              parent.accesscode,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimaryColor,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isActive ? 'Account active' : 'Account inactive',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ),
+                _buildParentActions(parent, isActive),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       color: Colors.white,
@@ -460,151 +643,150 @@ class _ManageParentsState extends State<ManageParents> {
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFDC2626),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      isActive ? 'ACTIVE' : 'INACTIVE',
-                      style: TextStyle(
-                        color: isActive
-                            ? const Color(0xFF15803D)
-                            : const Color(0xFFB91C1C),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _statusBadge(isActive),
             ),
           ),
-          SizedBox(
-            width: 140,
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'View Students',
-                  icon: const Icon(
-                    Icons.people_outline,
-                    size: 18,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ViewParentStudent(
-                          parent: parent,
-                          teacher: widget.teacher,
-                        ),
-                      ),
-                    );
-                  },
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 4),
-                InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: () {
-                    final isMobile = MediaQuery.of(context).size.width <= 768;
-                    if (isMobile) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AddParent(
-                            parent: parent,
-                            teacher: widget.teacher,
-                          ),
-                        ),
-                      );
-                    } else {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => AddParent(parent: parent),
-                      );
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppTheme.borderColor),
-                    ),
-                    child: const Icon(
-                      Icons.edit_outlined,
-                      size: 15,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Switch(
-                  value: isActive,
-                  activeThumbColor: const Color(0xFF16A34A),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onChanged: (val) async {
-                    final newStatus = val ? 'ACTIVE' : 'INACTIVE';
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        title: Text(
-                          val ? 'Activate Parent' : 'Deactivate Parent',
-                        ),
-                        content: Text(
-                          val
-                              ? 'Set this parent as active?'
-                              : 'Set this parent as inactive?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Confirm'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed ?? false) {
-                      firestore.collection('parents').doc(parent.id).update({
-                        'status': newStatus,
-                      });
-                    }
-                  },
-                ),
-              ],
+          SizedBox(width: 140, child: _buildParentActions(parent, isActive)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBadge(bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? const Color(0xFF16A34A)
+                  : const Color(0xFFDC2626),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            isActive ? 'ACTIVE' : 'INACTIVE',
+            style: TextStyle(
+              color: isActive
+                  ? const Color(0xFF15803D)
+                  : const Color(0xFFB91C1C),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildParentActions(Parent parent, bool isActive) {
+    final isMobile = MediaQuery.of(context).size.width <= 768;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'View Students',
+          icon: const Icon(
+            Icons.people_outline,
+            size: 18,
+            color: AppTheme.textSecondaryColor,
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ViewParentStudent(parent: parent, teacher: widget.teacher),
+              ),
+            );
+          },
+          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          visualDensity: VisualDensity.compact,
+        ),
+        IconButton(
+          tooltip: 'Edit Parent',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          onPressed: () {
+            if (isMobile) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      AddParent(parent: parent, teacher: widget.teacher),
+                ),
+              );
+            } else {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => AddParent(parent: parent),
+              );
+            }
+          },
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: const Icon(
+              Icons.edit_outlined,
+              size: 15,
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Switch(
+          value: isActive,
+          activeThumbColor: const Color(0xFF16A34A),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          onChanged: (val) async {
+            final newStatus = val ? 'ACTIVE' : 'INACTIVE';
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (_) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: Text(val ? 'Activate Parent' : 'Deactivate Parent'),
+                content: Text(
+                  val
+                      ? 'Set this parent as active?'
+                      : 'Set this parent as inactive?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Confirm'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed ?? false) {
+              await firestore.collection('parents').doc(parent.id).update({
+                'status': newStatus,
+              });
+            }
+          },
+        ),
+      ],
     );
   }
 }

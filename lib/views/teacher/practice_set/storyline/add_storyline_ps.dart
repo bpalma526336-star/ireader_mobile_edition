@@ -416,8 +416,9 @@ class _AddSlpsState extends State<AddSlps> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      runSpacing: 8,
                       children: [
                         Text(
                           'Questions',

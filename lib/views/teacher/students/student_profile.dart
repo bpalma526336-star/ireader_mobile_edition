@@ -1627,22 +1627,27 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               );
             }
 
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 2.5,
-              ),
-              itemCount: sets.length,
-              itemBuilder: (context, i) => _practiceSetChip(
-                title: sets[i]['title'] ?? '',
-                gradelevel: sets[i]['gradelevel'] ?? '',
-                category: sets[i]['category'] ?? '',
-                color: color,
-              ),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 520;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isMobile ? 1 : 2,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: isMobile ? 2.2 : 2.5,
+                  ),
+                  itemCount: sets.length,
+                  itemBuilder: (context, i) => _practiceSetChip(
+                    title: sets[i]['title'] ?? '',
+                    gradelevel: sets[i]['gradelevel'] ?? '',
+                    category: sets[i]['category'] ?? '',
+                    color: color,
+                  ),
+                );
+              },
             );
           },
         ),

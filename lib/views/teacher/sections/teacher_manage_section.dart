@@ -11,6 +11,7 @@ import 'package:ireader_mobile_edition/widgets/teacher_top_header.dart';
 import 'package:ireader_mobile_edition/views/teacher/assessments/viewassessment.dart';
 import 'package:ireader_mobile_edition/views/teacher/practice_set/select_practice_set.dart';
 import 'package:ireader_mobile_edition/views/teacher/students/manage_student.dart';
+import 'package:ireader_mobile_edition/views/teacher/teacher_mobile_header.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
@@ -686,7 +687,9 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
   // ─── BUILD ───────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 900;
+    final isMobile = screenWidth <= 600;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -712,22 +715,32 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
           Expanded(
             child: Column(
               children: [
-                TeacherHeader(
-                  teacher: widget.teacher,
-                  schoolyear: widget.schoolyear,
-                  onMenuPressed: isDesktop
-                      ? null
-                      : () => _scaffoldKey.currentState?.openDrawer(),
-                ),
+                if (isMobile)
+                  TeacherMobileHeader(
+                    teacher: widget.teacher,
+                    schoolyear: widget.schoolyear,
+                    onMenuPressed: () =>
+                        _scaffoldKey.currentState?.openDrawer(),
+                  )
+                else
+                  TeacherHeader(
+                    teacher: widget.teacher,
+                    schoolyear: widget.schoolyear,
+                    onMenuPressed: isDesktop
+                        ? null
+                        : () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
                 Container(
-                  padding: const EdgeInsets.fromLTRB(28, 14, 24, 14),
+                  padding: EdgeInsets.fromLTRB(
+                    isMobile ? 16 : 28,
+                    isMobile ? 16 : 14,
+                    isMobile ? 16 : 24,
+                    isMobile ? 16 : 14,
+                  ),
                   color: Colors.white,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
+                  child: isMobile
+                      ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Text(
                               'My Sections',
@@ -737,7 +750,7 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
                                 color: AppTheme.textPrimaryColor,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Text(
                               'Sections assigned to you for SY ${widget.schoolyear.schoolyearstart}-${widget.schoolyear.schoolyearend}',
                               style: const TextStyle(
@@ -745,12 +758,42 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
                                 color: AppTheme.textSecondaryColor,
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: _buildResultToggle(),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'My Sections',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Sections assigned to you for SY ${widget.schoolyear.schoolyearstart}-${widget.schoolyear.schoolyearend}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _buildResultToggle(),
                           ],
                         ),
-                      ),
-                      _buildResultToggle(),
-                    ],
-                  ),
                 ),
                 const Divider(height: 1, color: AppTheme.borderColor),
                 Expanded(
@@ -826,8 +869,9 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
                         builder: (context, constraints) {
                           final width = constraints.maxWidth;
                           double cardWidth;
+                          final horizontalPadding = width <= 520 ? 16.0 : 24.0;
                           if (width <= 520) {
-                            cardWidth = width - 48;
+                            cardWidth = width - (horizontalPadding * 2);
                           } else if (width <= 900) {
                             cardWidth = (width - 64) / 2;
                           } else {
@@ -835,7 +879,7 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
                           }
 
                           return SingleChildScrollView(
-                            padding: const EdgeInsets.all(24),
+                            padding: EdgeInsets.all(horizontalPadding),
                             child: Wrap(
                               spacing: 16,
                               runSpacing: 16,

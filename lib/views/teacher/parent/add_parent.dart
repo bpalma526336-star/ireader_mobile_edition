@@ -173,31 +173,40 @@ class _AddParentState extends State<AddParent> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.parent != null;
+    final isMobile = MediaQuery.of(context).size.width <= 600;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Parent' : 'Add Parent'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : _saveParent,
-              icon: const Icon(Icons.save_outlined, size: 18),
-              label: Text(isEditing ? 'Update Parent' : 'Save Parent'),
-            ),
-          ),
-        ],
+        actions: isMobile
+            ? [
+                IconButton(
+                  tooltip: isEditing ? 'Update parent' : 'Save parent',
+                  onPressed: _isLoading ? null : _saveParent,
+                  icon: const Icon(Icons.save_outlined),
+                ),
+              ]
+            : [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _saveParent,
+                    icon: const Icon(Icons.save_outlined, size: 18),
+                    label: Text(isEditing ? 'Update Parent' : 'Save Parent'),
+                  ),
+                ),
+              ],
       ),
       body: Form(
         key: _formKey,
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(isMobile ? 12 : 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 760),
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(28),
+                  padding: EdgeInsets.all(isMobile ? 18 : 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

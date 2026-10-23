@@ -282,6 +282,7 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
   // ─── Profile header card ───────────────────────────────────────────────────
 
   Widget _buildProfileCard(Map<String, dynamic> data) {
+    final isMobile = MediaQuery.of(context).size.width <= 600;
     final firstname = data['firstname'] ?? '';
     final middlename = data['middlename'] ?? '';
     final lastname = data['lastname'] ?? '';
@@ -304,7 +305,7 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.borderColor),
       ),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -313,8 +314,8 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
             children: [
               // Avatar
               Container(
-                width: 64,
-                height: 64,
+                width: isMobile ? 52 : 64,
+                height: isMobile ? 52 : 64,
                 decoration: BoxDecoration(
                   color: avatarColor,
                   shape: BoxShape.circle,
@@ -322,21 +323,23 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
                 child: Center(
                   child: Text(
                     initial,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 26,
+                      fontSize: isMobile ? 21 : 26,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: isMobile ? 12 : 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       fullName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -352,10 +355,12 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _readingLevelBadge(readlevel),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -390,7 +395,7 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
           const SizedBox(height: 16),
           // Info grid
           Wrap(
-            spacing: 24,
+            spacing: isMobile ? 12 : 24,
             runSpacing: 12,
             children: [
               _infoChip(Icons.wc, 'Gender', gender),
@@ -413,6 +418,7 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
   }
 
   Widget _cardBox({required Widget child, EdgeInsets? padding}) {
+    final isMobile = MediaQuery.of(context).size.width <= 600;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -420,7 +426,7 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.borderColor),
       ),
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ?? EdgeInsets.all(isMobile ? 16 : 20),
       child: child,
     );
   }
@@ -554,12 +560,6 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
   }
 
   Widget _buildSelectedPracticeSet() {
-    final practiceSets = [
-      "Word Recognition",
-      "Phrase and Sentences",
-      "Storyline Adventure",
-    ];
-
     Widget buildPracticeCard({
       required String title,
       required String subtitle,
@@ -1096,9 +1096,15 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
 
             final screenWidth = MediaQuery.of(context).size.width;
             final isSmall = screenWidth <= 768;
+            final horizontalPadding = screenWidth <= 600 ? 16.0 : 24.0;
 
             return ListView(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                16,
+                horizontalPadding,
+                24,
+              ),
               children: [
                 FutureBuilder<Map<String, String>>(
                   future: _getAssessmentTitles(results),
@@ -1252,7 +1258,12 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
                 .toList();
 
             return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              padding: EdgeInsets.fromLTRB(
+                MediaQuery.of(context).size.width <= 600 ? 16 : 24,
+                16,
+                MediaQuery.of(context).size.width <= 600 ? 16 : 24,
+                24,
+              ),
               itemCount: histories.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
@@ -1352,6 +1363,7 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width <= 600;
     final fullName =
         '${widget.student.firstname}${widget.student.middlename != null && widget.student.middlename!.isNotEmpty ? " ${widget.student.middlename}" : ""} ${widget.student.lastname}';
 
@@ -1415,7 +1427,12 @@ class _RCStudentProfileScreenState extends State<RCStudentProfileScreen> {
             children: [
               // Profile card
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                padding: EdgeInsets.fromLTRB(
+                  isMobile ? 16 : 24,
+                  isMobile ? 16 : 20,
+                  isMobile ? 16 : 24,
+                  0,
+                ),
                 child: _buildProfileCard(data),
               ),
 

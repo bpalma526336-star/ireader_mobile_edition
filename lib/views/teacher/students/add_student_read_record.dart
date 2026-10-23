@@ -307,7 +307,9 @@ class _AddStudentReadRecordScreenState
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(
+            MediaQuery.of(context).size.width <= 600 ? 16 : 20,
+          ),
           children: [
             AutoSizeText(
               "Save Student Reading Record",
@@ -434,6 +436,7 @@ class _AddStudentReadRecordScreenState
             // Save button (optional, duplicate of AppBar)
             Center(
               child: SizedBox(
+                width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : SaveReadingRecord,

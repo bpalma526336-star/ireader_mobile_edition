@@ -318,7 +318,9 @@ class _AddParentStudentState extends State<AddParentStudent> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(
+                MediaQuery.of(context).size.width <= 600 ? 16 : 24,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -518,6 +520,7 @@ class _AddParentStudentState extends State<AddParentStudent> {
           // Student dropdown
           Expanded(
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: selectedId,
               onChanged: (value) => _changeStudent(index, value),
               decoration: InputDecoration(
@@ -533,6 +536,8 @@ class _AddParentStudentState extends State<AddParentStudent> {
                     '${_sectionName(student.sectionid)} | '
                     '${_schoolYearName(student.schoolyearid)} | '
                     'LRN: ${student.lrn}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 );
               }).toList(),

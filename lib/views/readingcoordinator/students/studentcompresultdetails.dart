@@ -120,6 +120,7 @@ class _RCcompresultdetailsState extends State<RCcompresultdetails> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width <= 360;
     final scorePercentage =
         double.tryParse(widget.compResult.resultpercentage) ?? 0.0;
     final score = scorePercentage / 100.0;
@@ -181,8 +182,8 @@ class _RCcompresultdetailsState extends State<RCcompresultdetails> {
                           shape: BoxShape.circle,
                         ),
                         child: CircularPercentIndicator(
-                          radius: 100,
-                          lineWidth: 15,
+                          radius: isCompact ? 76 : 88,
+                          lineWidth: isCompact ? 11 : 13,
                           animation: true,
                           animationDuration: 1500,
                           percent: score,
@@ -192,7 +193,7 @@ class _RCcompresultdetailsState extends State<RCcompresultdetails> {
                               Text(
                                 '${scorePercentage.toInt()}%',
                                 style: TextStyle(
-                                  fontSize: 40,
+                                  fontSize: isCompact ? 32 : 36,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -200,7 +201,7 @@ class _RCcompresultdetailsState extends State<RCcompresultdetails> {
                               Text(
                                 '$correctAnswers/$totalQuestions',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: isCompact ? 16 : 18,
                                   color: Colors.white.withValues(alpha: 0.9),
                                 ),
                               ),
@@ -215,8 +216,13 @@ class _RCcompresultdetailsState extends State<RCcompresultdetails> {
                   ),
                   SizedBox(height: 20),
                   Container(
-                    margin: EdgeInsets.only(bottom: 30),
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    margin: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 12 : 24,
+                    ).copyWith(bottom: 24),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 14 : 24,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),

@@ -247,7 +247,9 @@ class _TeacherManageStudentScreenState
 
   Widget _avatar(String name) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
-    final color = _avatarColors[name.codeUnitAt(0) % _avatarColors.length];
+    final color =
+        _avatarColors[(name.isEmpty ? 0 : name.codeUnitAt(0)) %
+            _avatarColors.length];
     return Container(
       width: 34,
       height: 34,
@@ -332,8 +334,72 @@ class _TeacherManageStudentScreenState
   // ─── Table row ─────────────────────────────────────────────────────────────
 
   Widget _buildRow(Student student) {
+    final isMobile = MediaQuery.of(context).size.width <= 700;
     final fullName =
         '${student.firstname}${student.middlename != null && student.middlename!.isNotEmpty ? " ${student.middlename}" : ""} ${student.lastname}';
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _avatar(fullName),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fullName.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'LRN: ${student.lrn}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildStudentActions(student),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _readingLevelBadge(student.readlevel),
+                if (student.gradelevelread.isNotEmpty)
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text('Grade ${student.gradelevelread}'),
+                    avatar: const Icon(Icons.school_outlined, size: 16),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       color: Colors.white,
@@ -390,199 +456,251 @@ class _TeacherManageStudentScreenState
           Expanded(flex: 3, child: _readingLevelBadge(student.readlevel)),
 
           // ACTIONS
-          SizedBox(
-            width: 100,
-            child: Row(
-              children: [
-                // View profile
-                InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => StudentProfileScreen(
-                          student: student,
-                          section: widget.section,
-                          schoolyear: widget.schoolyear,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppTheme.borderColor),
-                    ),
-                    child: const Icon(
-                      Icons.person_outline,
-                      size: 15,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 6),
-                // Edit
-                InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: () {
-                    final screenWidth = MediaQuery.of(context).size.width;
-                    if (screenWidth <= 768) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AddStudentScreen(
-                            section: widget.section,
-                            schoolyear: widget.schoolyear,
-                            student: student,
-                            teacher: widget.teacher,
-                          ),
-                        ),
-                      );
-                    } else {
-                      showDialog(
-                        context: context,
-                        builder: (_) => Dialog(
-                          child: SizedBox(
-                            width: 600,
-                            child: AddStudentDialog(
-                              section: widget.section,
-                              schoolyear: widget.schoolyear,
-                              student: student,
-                              teacher: widget.teacher,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppTheme.borderColor),
-                    ),
-                    child: const Icon(
-                      Icons.edit_outlined,
-                      size: 15,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          SizedBox(width: 100, child: _buildStudentActions(student)),
         ],
       ),
+    );
+  }
+
+  Widget _buildStudentActions(Student student) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'View student profile',
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          padding: EdgeInsets.zero,
+          icon: const Icon(
+            Icons.person_outline,
+            size: 19,
+            color: AppTheme.textSecondaryColor,
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentProfileScreen(
+                  student: student,
+                  section: widget.section,
+                  schoolyear: widget.schoolyear,
+                ),
+              ),
+            );
+          },
+        ),
+        IconButton(
+          tooltip: 'Edit student',
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          padding: EdgeInsets.zero,
+          icon: const Icon(
+            Icons.edit_outlined,
+            size: 19,
+            color: AppTheme.textSecondaryColor,
+          ),
+          onPressed: () {
+            if (screenWidth <= 768) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddStudentScreen(
+                    section: widget.section,
+                    schoolyear: widget.schoolyear,
+                    student: student,
+                    teacher: widget.teacher,
+                  ),
+                ),
+              );
+            } else {
+              showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  child: SizedBox(
+                    width: 600,
+                    child: AddStudentDialog(
+                      section: widget.section,
+                      schoolyear: widget.schoolyear,
+                      student: student,
+                      teacher: widget.teacher,
+                    ),
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+      ],
     );
   }
 
   // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildToolbar(int shown, int total) {
+    final isMobile = MediaQuery.of(context).size.width <= 700;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        16,
+        isMobile ? 16 : 24,
+        12,
+      ),
       color: Colors.white,
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 38,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search students by name or LRN...',
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    size: 18,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.backgroundColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                      width: 1.5,
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 44,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Search students by name or LRN',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$shown of $total students',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 38,
-            child: OutlinedButton.icon(
-              onPressed: _openImportStudents,
-              icon: const Icon(Icons.upload_file, size: 16),
-              label: const Text('Import'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primaryColor,
-                side: const BorderSide(color: AppTheme.primaryColor),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 10),
+                Text(
+                  '$shown of $total students',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryColor,
+                  ),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _openImportStudents,
+                        icon: const Icon(Icons.upload_file, size: 18),
+                        label: const Text('Import'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _openAddStudent,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Student'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'Search students by name or LRN...',
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 18,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.backgroundColor,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 0,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppTheme.borderColor,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppTheme.borderColor,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppTheme.primaryColor,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$shown of $total students',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  height: 38,
+                  child: OutlinedButton.icon(
+                    onPressed: _openImportStudents,
+                    icon: const Icon(Icons.upload_file, size: 16),
+                    label: const Text('Import'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(color: AppTheme.primaryColor),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 38,
+                  child: ElevatedButton.icon(
+                    onPressed: _openAddStudent,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Student'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 38,
-            child: ElevatedButton.icon(
-              onPressed: _openAddStudent,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add Student'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -716,15 +834,21 @@ class _TeacherManageStudentScreenState
                 Expanded(
                   child: Column(
                     children: [
-                      _buildTableHeader(),
+                      if (MediaQuery.of(context).size.width > 700)
+                        _buildTableHeader(),
                       Expanded(
                         child: ListView.separated(
-                          padding: EdgeInsets.zero,
+                          padding: MediaQuery.of(context).size.width <= 700
+                              ? const EdgeInsets.fromLTRB(16, 12, 16, 24)
+                              : EdgeInsets.zero,
                           itemCount: students.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: AppTheme.borderColor,
-                          ),
+                          separatorBuilder: (_, __) =>
+                              MediaQuery.of(context).size.width <= 700
+                              ? const SizedBox(height: 10)
+                              : const Divider(
+                                  height: 1,
+                                  color: AppTheme.borderColor,
+                                ),
                           itemBuilder: (_, index) => _buildRow(students[index]),
                         ),
                       ),
