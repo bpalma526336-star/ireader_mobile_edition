@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
@@ -14,7 +12,6 @@ import 'package:ireader_mobile_edition/views/teacher/assessments/viewassessment.
 import 'package:ireader_mobile_edition/views/teacher/practice_set/select_practice_set.dart';
 import 'package:ireader_mobile_edition/views/teacher/students/manage_student.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
-import 'package:universal_html/html.dart' show AnchorElement;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'dart:io';

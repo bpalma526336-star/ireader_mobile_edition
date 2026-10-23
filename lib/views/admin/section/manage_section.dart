@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
@@ -16,7 +14,6 @@ import 'package:ireader_mobile_edition/views/admin/section/edit_section.dart';
 import 'package:ireader_mobile_edition/views/admin/section/edit_section_dialog.dart';
 import 'package:ireader_mobile_edition/views/admin/student/manage_student.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
-import 'package:universal_html/html.dart' show AnchorElement;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
@@ -241,11 +238,11 @@ class _ManageSectionState extends State<ManageSection> {
     final List<int> bytes = workbook.saveAsStream();
     workbook.dispose();
 
-    AnchorElement(
-        href: 'data:application/octet-stream;base64,${base64.encode(bytes)}',
-      )
-      ..setAttribute('download', 'Phil-IRI_Student_List_All.xlsx')
-      ..click();
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = '${directory.path}/Phil-IRI_Student_List_All.xlsx';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes, flush: true);
+    await OpenFile.open(filePath);
   }
 
   // ─── Export: single section ─────────────────────────────────────────────────
@@ -356,23 +353,12 @@ class _ManageSectionState extends State<ManageSection> {
     final List<int> bytes = workbook.saveAsStream();
     workbook.dispose();
 
-    if (kIsWeb) {
-      AnchorElement(
-          href: 'data:application/octet-stream;base64,${base64.encode(bytes)}',
-        )
-        ..setAttribute(
-          'download',
-          'Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx',
-        )
-        ..click();
-    } else {
-      final directory = (await getApplicationDocumentsDirectory()).path;
-      final filePath =
-          '$directory/Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx';
-      final file = File(filePath);
-      await file.writeAsBytes(bytes, flush: true);
-      OpenFile.open(filePath);
-    }
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath =
+        '${directory.path}/Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes, flush: true);
+    await OpenFile.open(filePath);
   }
 
   // ─── Open edit dialog/screen ───────────────────────────────────────────────

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_size_text/auto_size_text.dart';
@@ -19,7 +18,6 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
-import 'package:universal_html/html.dart' hide File, VoidCallback;
 
 class RCManageSection extends StatefulWidget {
   final SchoolYear schoolyear;
@@ -94,7 +92,7 @@ class _RCManageSectionState extends State<RCManageSection> {
         .collection('students')
         .where('schoolyearid', isEqualTo: widget.schoolyear.id)
         .where('sectionid', isEqualTo: sectionid)
-        .where('schoolid', isEqualTo: widget.rc.schoolid)
+        .where('schoolid', isEqualTo: widget.readingcoordinator.schoolid)
         .where('status', isEqualTo: 'ACTIVE')
         .snapshots()
         .map((snapshot) {
@@ -121,11 +119,7 @@ class _RCManageSectionState extends State<RCManageSection> {
             }
           }
 
-          return {
-            'Frustration': frustration,
-            'Instructional': instructional,
-            'Independent': independent,
-          };
+          return {'Instructional': instructional, 'Independent': independent};
         });
   }
 
@@ -135,7 +129,7 @@ class _RCManageSectionState extends State<RCManageSection> {
     return _firestore
         .collection('sections')
         .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-        .where('schoolid', isEqualTo: widget.rc.schoolid)
+        .where('schoolid', isEqualTo: widget.readingcoordinator.schoolid)
         .snapshots()
         .map(
           (snap) =>
@@ -144,7 +138,6 @@ class _RCManageSectionState extends State<RCManageSection> {
   }
 
   // ─── Export: all students in this school year ──────────────────────────────
-
   Future<void> exportStudents() async {
     final Workbook workbook = Workbook();
     final Worksheet sheet = workbook.worksheets[0];
@@ -231,11 +224,11 @@ class _RCManageSectionState extends State<RCManageSection> {
     final List<int> bytes = workbook.saveAsStream();
     workbook.dispose();
 
-    AnchorElement(
-        href: 'data:application/octet-stream;base64,${base64.encode(bytes)}',
-      )
-      ..setAttribute('download', 'Phil-IRI_Student_List_All.xlsx')
-      ..click();
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = '${directory.path}/Phil-IRI_Student_List_All.xlsx';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes, flush: true);
+    await OpenFile.open(filePath);
   }
 
   // ─── Export: single section ─────────────────────────────────────────────────

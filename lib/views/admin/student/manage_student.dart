@@ -13,7 +13,6 @@ import 'package:ireader_mobile_edition/views/admin/student/add_student_dialog.da
 import 'package:ireader_mobile_edition/views/admin/student/student_profile.dart';
 import 'package:ireader_mobile_edition/shared/import_students_dialog_admin.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
-import 'package:universal_html/html.dart' show AnchorElement;
 
 class ManageStudentScreen extends StatefulWidget {
   final SchoolYear schoolyear;

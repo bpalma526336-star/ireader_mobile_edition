@@ -376,7 +376,10 @@ class _ManageAssessmentState extends State<ManageAssessment> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => EditAssessmentScreen(assessment: assessment),
+          builder: (context) => EditAssessmentScreen(
+            assessment: assessment,
+            readingcoordinator: widget.readingcoordinator,
+          ),
         ),
       );
     } else if (value == 'delete') {

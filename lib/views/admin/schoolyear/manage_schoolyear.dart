@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +15,6 @@ import 'package:ireader_mobile_edition/views/admin/section/manage_section.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import 'package:universal_html/html.dart' show AnchorElement;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 
 class ManageSchoolyearScreen extends StatefulWidget {
@@ -447,24 +444,12 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen> {
 
     final bytes = workbook.saveAsStream();
     workbook.dispose();
-    if (kIsWeb) {
-      AnchorElement(
-          href:
-              'data:application/octet-stream;charset=utf-16le;base64,${base64.encode(bytes)}',
-        )
-        ..setAttribute(
-          'download',
-          'School Year ${schoolyear['schoolyearstart']} - ${schoolyear['schoolyearend']} Result.xlsx',
-        )
-        ..click();
-    } else {
-      final directory = (await getApplicationDocumentsDirectory()).path;
-      final filePath =
-          '$directory/School Year ${schoolyear['schoolyearstart']} - ${schoolyear['schoolyearend']} Result.xlsx';
-      final file = File(filePath);
-      await file.writeAsBytes(bytes, flush: true);
-      OpenFile.open(filePath);
-    }
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath =
+        '${directory.path}/School Year ${schoolyear['schoolyearstart']} - ${schoolyear['schoolyearend']} Result.xlsx';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes, flush: true);
+    await OpenFile.open(filePath);
   }
 
   Widget _cardButton(String label, VoidCallback onTap) {

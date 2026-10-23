@@ -1,16 +1,12 @@
-import 'dart:html' as html;
-
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:ireader_mobile_edition/auth/login.dart';
+import 'package:ireader_mobile_edition/theme.dart';
 import 'package:ireader_mobile_edition/views/admin/admin/manage_admin.dart';
 import 'package:ireader_mobile_edition/views/admin/admindashboard.dart';
 import 'package:ireader_mobile_edition/views/admin/division/manage_division.dart';
 import 'package:ireader_mobile_edition/views/admin/parent/manage_parents.dart';
 import 'package:ireader_mobile_edition/views/admin/readingcoordinator/manage_rc.dart';
-import 'package:ireader_mobile_edition/views/admin/school/manage_school.dart';
-import 'package:ireader_mobile_edition/views/admin/schoolyear/manage_schoolyear.dart';
 import 'package:ireader_mobile_edition/views/admin/teacher/manage_teacher.dart';
 
 enum AdminRoute {
@@ -29,11 +25,6 @@ class AdminSidebar extends StatelessWidget {
 
   const AdminSidebar({super.key, required this.activeRoute});
 
-  static const Color _bg = Color(0xFF0F172A);
-  static const Color _activeBg = Color(0xFF1E293B);
-  static const Color _muted = Color(0xFF94A3B8);
-  static const Color _accent = Color(0xFF3B82F6);
-
   void _navigate(BuildContext context, Widget page) {
     Navigator.pushAndRemoveUntil(
       context,
@@ -49,10 +40,6 @@ class AdminSidebar extends StatelessWidget {
   Future<void> _logout(BuildContext context) async {
     // await FirebaseAuth.instance.signOut();
     await GoogleSignIn().signOut();
-    html.window.history.pushState(null, '', '');
-    final sub = html.window.onPopState.listen((_) {
-      html.window.history.pushState(null, '', '');
-    });
     if (context.mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -60,249 +47,121 @@ class AdminSidebar extends StatelessWidget {
         (_) => false,
       );
     }
-    await sub.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      color: _bg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E3A5F),
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(
-                        color: const Color(0xFF2D4E7E),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'iR',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'iReader',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      Text(
-                        'ADMIN PORTAL',
-                        style: TextStyle(
-                          color: Color(0xFF475569),
-                          fontSize: 8.5,
-                          letterSpacing: 1.4,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        DrawerHeader(
+          decoration: const BoxDecoration(color: AppTheme.backgroundColor),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Image.asset(
+                  'assets/images/Department-of-Education-DepEd-Seal-300x300.png',
+                  fit: BoxFit.contain,
+                ),
               ),
-            ),
+              const SizedBox(height: 10),
+              const Text(
+                'iReader',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Admin',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          Container(height: 1, color: const Color(0xFF1E293B)),
-          const SizedBox(height: 6),
-          _navItem(
-            context,
-            'D',
-            'Dashboard',
-            AdminRoute.dashboard,
-            const AdminDashboard(),
+        ),
+        _navItem(
+          context,
+          'Dashboard',
+          Icons.dashboard,
+          AdminRoute.dashboard,
+          const AdminDashboard(),
+        ),
+        const SizedBox(height: 12),
+        _navItem(
+          context,
+          'Divisions',
+          Icons.business,
+          AdminRoute.divisions,
+          const ManageDivisionScreen(),
+        ),
+        const SizedBox(height: 12),
+        _navItem(
+          context,
+          'Admins',
+          Icons.admin_panel_settings,
+          AdminRoute.admins,
+          const ManageAdminScreen(),
+        ),
+        const SizedBox(height: 12),
+        _navItem(
+          context,
+          'Reading Coords',
+          Icons.groups,
+          AdminRoute.readingCoordinators,
+          const ManageRcScreen(),
+        ),
+        const SizedBox(height: 12),
+        _navItem(
+          context,
+          'Teachers',
+          Icons.school,
+          AdminRoute.teachers,
+          const ManageTeacherScreen(),
+        ),
+        const SizedBox(height: 12),
+        _navItem(
+          context,
+          'Parents',
+          Icons.people,
+          AdminRoute.parents,
+          const ManageParents(),
+        ),
+        const SizedBox(height: 12),
+        ListTile(
+          leading: const Icon(Icons.logout, color: Colors.redAccent),
+          title: const Text(
+            'Log Out',
+            style: TextStyle(fontSize: 18, color: Colors.redAccent),
           ),
-          // _navItem(
-          //   context,
-          //   'Y',
-          //   'School Years',
-          //   AdminRoute.schoolYears,
-          //   const ManageSchoolyearScreen(),
-          // ),
-          _navItem(
-            context,
-            'V',
-            'Divisions',
-            AdminRoute.divisions,
-            const ManageDivisionScreen(),
-          ),
-          // _navItem(
-          //   context,
-          //   'S',
-          //   'Schools',
-          //   AdminRoute.schools,
-          //   const ManageSchoolScreen(),
-          // ),
-          _navItem(
-            context,
-            'A',
-            'Admins',
-            AdminRoute.admins,
-            const ManageAdminScreen(),
-          ),
-          _navItem(
-            context,
-            'R',
-            'Reading Coords',
-            AdminRoute.readingCoordinators,
-            const ManageRcScreen(),
-          ),
-          _navItem(
-            context,
-            'T',
-            'Teachers',
-            AdminRoute.teachers,
-            const ManageTeacherScreen(),
-          ),
-          _navItem(
-            context,
-            'P',
-            'Parents',
-            AdminRoute.parents,
-            const ManageParents(),
-          ),
-          const Spacer(),
-          Container(height: 1, color: const Color(0xFF1E293B)),
-          _logoutItem(context),
-          const SizedBox(height: 8),
-        ],
-      ),
+          onTap: () => _logout(context),
+        ),
+      ],
     );
   }
 
   Widget _navItem(
     BuildContext context,
-    String letter,
     String label,
+    IconData icon,
     AdminRoute route,
     Widget page,
   ) {
     final isActive = activeRoute == route;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      child: Material(
-        color: isActive ? _activeBg : Colors.transparent,
-        borderRadius: BorderRadius.circular(7),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(7),
-          hoverColor: const Color(0xFF1E293B),
-          onTap: isActive ? null : () => _navigate(context, page),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? _accent.withValues(alpha: 0.18)
-                        : const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Center(
-                    child: Text(
-                      letter,
-                      style: TextStyle(
-                        color: isActive ? _accent : _muted,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: isActive ? Colors.white : _muted,
-                      fontSize: 12.5,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-                if (isActive)
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: const BoxDecoration(
-                      color: _accent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    final color = isActive ? AppTheme.primaryColor : AppTheme.textPrimaryColor;
 
-  Widget _logoutItem(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(7),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(7),
-          hoverColor: Colors.red.withValues(alpha: 0.08),
-          onTap: () => _logout(context),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.logout,
-                      color: Colors.redAccent,
-                      size: 13,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Log Out',
-                  style: TextStyle(color: Colors.redAccent, fontSize: 12.5),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(label, style: TextStyle(fontSize: 18, color: color)),
+      selected: isActive,
+      selectedTileColor: AppTheme.primaryColor.withValues(alpha: 0.08),
+      onTap: isActive ? null : () => _navigate(context, page),
     );
   }
 }

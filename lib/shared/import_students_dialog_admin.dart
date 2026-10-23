@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
-import 'package:ireader_mobile_edition/model/teacher.dart';
 import 'package:ireader_mobile_edition/theme.dart';
-import 'package:universal_html/html.dart' as html;
+import 'package:share_plus/share_plus.dart';
 
 class _ParsedRow {
   final int rowNumber;
@@ -65,37 +65,57 @@ class _ImportStudentsDialogAdminState extends State<ImportStudentsDialogAdmin> {
   String _fileName = '';
   bool _importing = false;
 
-  void _downloadTemplate() {
+  Future<void> _shareTemplate() async {
     const template =
         'LRN,First Name,Middle Name,Last Name,Gender,GST Score\r\n';
-    final bytes = utf8.encode(template);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'Phil_IRI_Student_Import_Template.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              utf8.encode(template),
+              mimeType: 'text/csv',
+              name: 'Phil_IRI_Student_Import_Template.csv',
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to share the CSV template.')),
+      );
+    }
   }
 
-  void _pickFile() {
-    final input = html.FileUploadInputElement()..accept = '.csv';
-    input.click();
-    input.onChange.listen((_) {
-      final file = input.files?.first;
-      if (file == null) return;
-      final reader = html.FileReader();
-      reader.readAsText(file);
-      reader.onLoad.listen((_) {
-        final content = reader.result as String;
-        if (mounted) {
-          setState(() {
-            _fileName = file.name;
-            _filePicked = true;
-            _rows = _parseCsv(content);
-          });
-        }
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        throw const FormatException('The selected file could not be read.');
+      }
+
+      final content = utf8.decode(bytes, allowMalformed: true);
+      if (!mounted) return;
+      setState(() {
+        _fileName = file.name;
+        _filePicked = true;
+        _rows = _parseCsv(content);
       });
-    });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to read the selected CSV file.')),
+      );
+    }
   }
 
   List<_ParsedRow> _parseCsv(String content) {
@@ -252,13 +272,21 @@ class _ImportStudentsDialogAdminState extends State<ImportStudentsDialogAdmin> {
   Widget build(BuildContext context) {
     final validCount = _rows.where((r) => r.isValid).length;
     final errorCount = _rows.where((r) => !r.isValid).length;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 600;
 
     return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 12 : 40,
+        vertical: 24,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        width: 720,
-        constraints: const BoxConstraints(maxHeight: 660),
-        padding: const EdgeInsets.all(24),
+        width: isCompact ? screenWidth - 24 : 720,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height - 48,
+        ),
+        padding: EdgeInsets.all(isCompact ? 16 : 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,12 +334,12 @@ class _ImportStudentsDialogAdminState extends State<ImportStudentsDialogAdmin> {
             // ── Step 1: Download template ────────────────────────────────────
             _buildStep(
               '1',
-              'Download the CSV Template',
-              'Fill it in using Google Sheets or Excel. Do not change the column headers.',
+              'Share the CSV Template',
+              'Save or share the blank file, then fill it in using a spreadsheet app.',
               OutlinedButton.icon(
-                onPressed: _importing ? null : _downloadTemplate,
-                icon: const Icon(Icons.download, size: 15),
-                label: const Text('Download Template'),
+                onPressed: _importing ? null : _shareTemplate,
+                icon: const Icon(Icons.share, size: 15),
+                label: const Text('Share Template'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primaryColor,
                   side: const BorderSide(color: AppTheme.primaryColor),
@@ -334,8 +362,8 @@ class _ImportStudentsDialogAdminState extends State<ImportStudentsDialogAdmin> {
             // ── Step 2: Upload ───────────────────────────────────────────────
             _buildStep(
               '2',
-              'Upload the Filled File',
-              'In Google Sheets: File → Download → CSV. In Excel: Save As → CSV.',
+              'Choose the Filled CSV File',
+              'Export the completed spreadsheet as a CSV file, then select it here.',
               Row(
                 children: [
                   ElevatedButton.icon(
@@ -414,184 +442,194 @@ class _ImportStudentsDialogAdminState extends State<ImportStudentsDialogAdmin> {
               ),
               const SizedBox(height: 8),
               Flexible(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppTheme.borderColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.backgroundColor,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(7),
-                          ),
-                        ),
-                        child: const Row(
-                          children: [
-                            SizedBox(
-                              width: 30,
-                              child: Text('#', style: _headerStyle),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text('LRN', style: _headerStyle),
-                            ),
-                            Expanded(
-                              flex: 5,
-                              child: Text('NAME', style: _headerStyle),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text('GENDER', style: _headerStyle),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text('GST', style: _headerStyle),
-                            ),
-                            SizedBox(
-                              width: 100,
-                              child: Text('STATUS', style: _headerStyle),
-                            ),
-                          ],
-                        ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: isCompact ? 680 : 672,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.borderColor),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const Divider(color: AppTheme.borderColor, height: 1),
-                      Flexible(
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: _rows.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            color: AppTheme.borderColor,
-                            height: 1,
-                          ),
-                          itemBuilder: (_, i) {
-                            final row = _rows[i];
-                            final isError = !row.isValid;
-                            return Container(
-                              color: isError
-                                  ? const Color(0xFFFFF5F5)
-                                  : Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 9,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppTheme.backgroundColor,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(7),
                               ),
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 30,
-                                    child: Text(
-                                      '${row.rowNumber}',
-                                      style: const TextStyle(
-                                        fontSize: 11.5,
-                                        color: AppTheme.textSecondaryColor,
-                                      ),
-                                    ),
+                            ),
+                            child: const Row(
+                              children: [
+                                SizedBox(
+                                  width: 30,
+                                  child: Text('#', style: _headerStyle),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text('LRN', style: _headerStyle),
+                                ),
+                                Expanded(
+                                  flex: 5,
+                                  child: Text('NAME', style: _headerStyle),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text('GENDER', style: _headerStyle),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text('GST', style: _headerStyle),
+                                ),
+                                SizedBox(
+                                  width: 100,
+                                  child: Text('STATUS', style: _headerStyle),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(color: AppTheme.borderColor, height: 1),
+                          Flexible(
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: _rows.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                color: AppTheme.borderColor,
+                                height: 1,
+                              ),
+                              itemBuilder: (_, i) {
+                                final row = _rows[i];
+                                final isError = !row.isValid;
+                                return Container(
+                                  color: isError
+                                      ? const Color(0xFFFFF5F5)
+                                      : Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 9,
                                   ),
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      row.lrn,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textPrimaryColor,
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 30,
+                                        child: Text(
+                                          '${row.rowNumber}',
+                                          style: const TextStyle(
+                                            fontSize: 11.5,
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 5,
-                                    child: Text(
-                                      [
-                                        row.firstname,
-                                        if (row.middlename.isNotEmpty)
-                                          row.middlename,
-                                        row.lastname,
-                                      ].where((s) => s.isNotEmpty).join(' '),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textPrimaryColor,
+                                      Expanded(
+                                        flex: 3,
+                                        child: Text(
+                                          row.lrn,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textPrimaryColor,
+                                          ),
+                                        ),
                                       ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      row.gender,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textSecondaryColor,
+                                      Expanded(
+                                        flex: 5,
+                                        child: Text(
+                                          [
+                                                row.firstname,
+                                                if (row.middlename.isNotEmpty)
+                                                  row.middlename,
+                                                row.lastname,
+                                              ]
+                                              .where((s) => s.isNotEmpty)
+                                              .join(' '),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textPrimaryColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      row.gstscore,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textSecondaryColor,
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          row.gender,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 100,
-                                    child: isError
-                                        ? Tooltip(
-                                            message: row.error ?? '',
-                                            child: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.error_outline,
-                                                  size: 13,
-                                                  color: Color(0xFFEF4444),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    row.error ?? '',
-                                                    style: const TextStyle(
-                                                      fontSize: 10.5,
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          row.gstscore,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 100,
+                                        child: isError
+                                            ? Tooltip(
+                                                message: row.error ?? '',
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.error_outline,
+                                                      size: 13,
                                                       color: Color(0xFFEF4444),
                                                     ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(
+                                                        row.error ?? '',
+                                                        style: const TextStyle(
+                                                          fontSize: 10.5,
+                                                          color: Color(
+                                                            0xFFEF4444,
+                                                          ),
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            : const Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.check_circle,
+                                                    size: 13,
+                                                    color: Color(0xFF22C55E),
                                                   ),
-                                                ),
-                                              ],
-                                            ),
-                                          )
-                                        : const Row(
-                                            children: [
-                                              Icon(
-                                                Icons.check_circle,
-                                                size: 13,
-                                                color: Color(0xFF22C55E),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'Ready',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: Color(0xFF22C55E),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                'Ready',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: Color(0xFF22C55E),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

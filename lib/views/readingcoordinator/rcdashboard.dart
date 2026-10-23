@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/readingcoordinator.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
 import 'package:ireader_mobile_edition/theme.dart';
+import 'package:ireader_mobile_edition/views/readingcoordinator/compare/compare_division.dart';
+import 'package:ireader_mobile_edition/views/readingcoordinator/compare/compare_school.dart';
 import 'package:ireader_mobile_edition/widgets/readingcoordinator_sidebar.dart';
 
 class RCDashboard extends StatefulWidget {
@@ -146,6 +149,147 @@ class _RCDashboardState extends State<RCDashboard> {
     _endYearId = _endYear!.id;
     await _analyzeRange(years);
     setState(() => _loadingAnalysis = false);
+  }
+
+  Future<void> _openSchoolComparison() async {
+    final divisionsFuture = _firestore.collection('divisions').get();
+
+    String? selectedDivisionId;
+
+    final division = await showDialog<Division>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Select Division'),
+              content: SizedBox(
+                width: 360,
+                child: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  future: divisionsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 72,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Text(
+                        'Unable to load divisions: ${snapshot.error}',
+                      );
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Text('No divisions found.');
+                    }
+
+                    // Load active divisions and sort alphabetically.
+                    final divisions =
+                        snapshot.data!.docs
+                            .map((doc) => Division.fromMap(doc.id, doc.data()))
+                            .where(
+                              (division) =>
+                                  division.status.toUpperCase() == 'ACTIVE',
+                            )
+                            .toList()
+                          ..sort((a, b) => a.name.compareTo(b.name));
+
+                    if (divisions.isEmpty) {
+                      return const Text('No active divisions are available.');
+                    }
+
+                    // Use unique Firestore document IDs as values.
+                    // This avoids comparing Division objects directly.
+                    final validIds = divisions
+                        .map((division) => division.id)
+                        .toSet();
+
+                    final currentSelection =
+                        validIds.contains(selectedDivisionId)
+                        ? selectedDivisionId
+                        : null;
+
+                    return DropdownButtonFormField<String>(
+                      initialValue: currentSelection,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Division',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: divisions
+                          .map(
+                            (division) => DropdownMenuItem<String>(
+                              value: division.id,
+                              child: Text(
+                                division.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (id) {
+                        setDialogState(() {
+                          selectedDivisionId = id;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  future: divisionsFuture,
+                  builder: (context, snapshot) {
+                    final divisions =
+                        snapshot.data?.docs
+                            .map((doc) => Division.fromMap(doc.id, doc.data()))
+                            .where(
+                              (division) =>
+                                  division.status.toUpperCase() == 'ACTIVE',
+                            )
+                            .toList() ??
+                        <Division>[];
+
+                    final canCompare =
+                        snapshot.hasData &&
+                        !snapshot.hasError &&
+                        divisions.any((d) => d.id == selectedDivisionId);
+
+                    return FilledButton(
+                      onPressed: !canCompare
+                          ? null
+                          : () {
+                              final selectedDivision = divisions.firstWhere(
+                                (d) => d.id == selectedDivisionId,
+                              );
+
+                              Navigator.pop(dialogContext, selectedDivision);
+                            },
+                      child: const Text('Compare'),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || division == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CompareSchool(division: division)),
+    );
   }
 
   // =========================================================
@@ -889,6 +1033,53 @@ class _RCDashboardState extends State<RCDashboard> {
       ),
     );
 
+    Widget generateCompareDivision({bool expanded = false}) => SizedBox(
+      width: expanded ? double.infinity : null,
+      height: 42,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => CompareDivision()),
+          );
+        },
+        icon: const Icon(Icons.insights_outlined, size: 17),
+        label: const Text('Compare Divisions'),
+      ),
+    );
+
+    Widget generateCompareSchools({bool expanded = false}) => SizedBox(
+      width: expanded ? double.infinity : null,
+      height: 42,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onPressed: _openSchoolComparison,
+        icon: const Icon(Icons.insights_outlined, size: 17),
+        label: const Text('Compare Schools'),
+      ),
+    );
+
     final yearFields = Row(
       children: [
         Expanded(
@@ -934,6 +1125,10 @@ class _RCDashboardState extends State<RCDashboard> {
           yearFields,
           const SizedBox(height: 12),
           generateButton(expanded: true),
+          const SizedBox(height: 12),
+          generateCompareDivision(expanded: true),
+          const SizedBox(height: 12),
+          generateCompareSchools(expanded: true),
           if (rangeLabel != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -954,6 +1149,10 @@ class _RCDashboardState extends State<RCDashboard> {
         Expanded(child: yearFields),
         const SizedBox(width: 12),
         generateButton(),
+        const SizedBox(width: 12),
+        generateCompareDivision(),
+        const SizedBox(width: 12),
+        generateCompareSchools(),
         if (rangeLabel != null) ...[
           const SizedBox(width: 12),
           Flexible(
