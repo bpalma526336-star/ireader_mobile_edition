@@ -72,7 +72,7 @@ class _EditSectionState extends State<EditSection> {
         'sectionname': sectionname.text.trim(),
         'schoolyearid': widget.section.schoolyearid,
         'schoolid': widget.school.id,
-        'divisionid': widget.division?.id,
+        'divisionid': widget.division.id,
         'teacherid': _selectedTeacherId!,
       });
 

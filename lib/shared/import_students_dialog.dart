@@ -56,6 +56,10 @@ class ImportStudentsDialog extends StatefulWidget {
 }
 
 class _ImportStudentsDialogState extends State<ImportStudentsDialog> {
+  static const _maxFileBytes = 1024 * 1024;
+  static const _maxRows = 1000;
+  static const _maxFieldLength = 60;
+
   List<_ParsedRow> _rows = [];
   bool _filePicked = false;
   String _fileName = '';
@@ -98,6 +102,13 @@ class _ImportStudentsDialogState extends State<ImportStudentsDialog> {
       if (bytes == null) {
         throw const FormatException('The selected file could not be read.');
       }
+      if (bytes.length > _maxFileBytes) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('That file is too large (max 1 MB).')),
+        );
+        return;
+      }
 
       final content = utf8.decode(bytes, allowMalformed: true);
       if (!mounted) return;
@@ -123,8 +134,9 @@ class _ImportStudentsDialogState extends State<ImportStudentsDialog> {
 
     if (lines.length < 2) return [];
 
-    final dataLines = lines.skip(1).toList();
+    final dataLines = lines.skip(1).take(_maxRows).toList();
     final rows = <_ParsedRow>[];
+    final seenLrns = <String>{};
 
     for (int i = 0; i < dataLines.length; i++) {
       final parts = dataLines[i].split(',');
@@ -155,6 +167,15 @@ class _ImportStudentsDialogState extends State<ImportStudentsDialog> {
       String? error;
       if (lrn.isEmpty) {
         error = 'LRN is required';
+      } else if (!seenLrns.add(lrn)) {
+        error = 'Duplicate LRN in this file';
+      } else if ([
+        lrn,
+        firstname,
+        middlename,
+        lastname,
+      ].any((v) => v.length > _maxFieldLength)) {
+        error = 'A value is too long (max $_maxFieldLength characters)';
       } else if (firstname.isEmpty) {
         error = 'First name is required';
       } else if (lastname.isEmpty) {
@@ -197,50 +218,63 @@ class _ImportStudentsDialogState extends State<ImportStudentsDialog> {
     int imported = 0;
     int skipped = 0;
 
-    for (final row in validRows) {
-      try {
-        final existing = await firestore
-            .collection('students')
-            .where('lrn', isEqualTo: row.lrn)
-            .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-            .where('sectionid', isEqualTo: widget.section.id)
-            .where('divisionid', isEqualTo: widget.teacher.divisionid)
-            .where('schoolid', isEqualTo: widget.teacher.schoolid)
-            .get();
+    try {
+      // One query for the LRNs already in this section, instead of one query
+      // per row, then batched writes instead of one write per row.
+      final existing = await firestore
+          .collection('students')
+          .where('schoolyearid', isEqualTo: widget.schoolyear.id)
+          .where('sectionid', isEqualTo: widget.section.id)
+          .where('divisionid', isEqualTo: widget.teacher.divisionid)
+          .where('schoolid', isEqualTo: widget.teacher.schoolid)
+          .get();
+      final existingLrns = {
+        for (final d in existing.docs) (d.data()['lrn'] ?? '').toString(),
+      };
 
-        if (existing.docs.isNotEmpty) {
+      var batch = firestore.batch();
+      var pending = 0;
+      for (final row in validRows) {
+        if (existingLrns.contains(row.lrn)) {
           skipped++;
           continue;
         }
-
         final docId = firestore.collection('students').doc().id;
-        await firestore
-            .collection('students')
-            .doc(docId)
-            .set(
-              Student(
-                id: docId,
-                lrn: row.lrn,
-                sectionid: widget.section.id,
-                schoolyearid: widget.schoolyear.id,
-                firstname: row.firstname,
-                middlename: row.middlename.isEmpty ? null : row.middlename,
-                lastname: row.lastname,
-                gstscore: row.gstscore,
-                gradelevelread: row.gradelevelread,
-                gender: row.gender,
-                readlevel: 'Not Started',
-                readingresult: 'Not Started',
-                comprehensionresult: 'Not Started',
-                status: 'ACTIVE',
-                schoolid: widget.teacher.schoolid,
-                divisionid: widget.teacher.divisionid,
-              ).toMap(),
-            );
-        imported++;
-      } catch (_) {
-        skipped++;
+        batch.set(
+          firestore.collection('students').doc(docId),
+          Student(
+            id: docId,
+            lrn: row.lrn,
+            sectionid: widget.section.id,
+            schoolyearid: widget.schoolyear.id,
+            firstname: row.firstname,
+            middlename: row.middlename.isEmpty ? null : row.middlename,
+            lastname: row.lastname,
+            gstscore: row.gstscore,
+            gradelevelread: row.gradelevelread,
+            gender: row.gender,
+            readlevel: 'Not Started',
+            readingresult: 'Not Started',
+            comprehensionresult: 'Not Started',
+            status: 'ACTIVE',
+            schoolid: widget.teacher.schoolid,
+            divisionid: widget.teacher.divisionid,
+          ).toMap(),
+        );
+        pending++;
+        if (pending == 450) {
+          await batch.commit();
+          imported += pending;
+          batch = firestore.batch();
+          pending = 0;
+        }
       }
+      if (pending > 0) {
+        await batch.commit();
+        imported += pending;
+      }
+    } catch (_) {
+      skipped = validRows.length - imported;
     }
 
     if (!mounted) return;

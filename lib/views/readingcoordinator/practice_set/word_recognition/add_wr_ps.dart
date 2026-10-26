@@ -147,6 +147,7 @@ class _AddWrPsState extends State<AddWrPs> {
         ).toMap(),
       );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
@@ -157,8 +158,10 @@ class _AddWrPsState extends State<AddWrPs> {
         ),
       );
 
+      if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -169,9 +172,11 @@ class _AddWrPsState extends State<AddWrPs> {
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -199,6 +204,7 @@ class _AddWrPsState extends State<AddWrPs> {
     );
 
     if (shouldDiscard == true) {
+      if (!mounted) return;
       Navigator.pop(context);
     }
   }

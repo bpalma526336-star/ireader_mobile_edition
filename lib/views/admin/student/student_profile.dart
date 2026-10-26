@@ -1,3 +1,5 @@
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -196,7 +198,8 @@ Widget buildQuickChart(
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
-class _StudentProfileScreenState extends State<StudentProfileScreen> {
+class _StudentProfileScreenState extends State<StudentProfileScreen>
+    with MemoMixin<StudentProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   int _selectedFilter =
@@ -214,21 +217,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   Future<Map<String, String>> _getAssessmentTitles(
     List<CompAssessmentResult> results,
   ) async {
-    final Map<String, String> titles = {};
-    for (final result in results) {
-      titles[result.assessmentid] = await _getAssessmentName(
-        result.assessmentid,
-      );
-    }
-    return titles;
+    final ids = {for (final r in results) r.assessmentid}.toList();
+    final names = await Future.wait(ids.map(_getAssessmentName));
+    return Map.fromIterables(ids, names);
   }
 
   Future<String> _getAssessmentName(String assessmentid) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('assessment')
-          .doc(assessmentid)
-          .get();
+      final doc = await FirestoreCache.doc('assessment', assessmentid);
       if (doc.exists) {
         return doc['assessmenttitle'] ?? 'Unnamed Assessment';
       }
@@ -774,10 +770,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       // Reading Results
       case 0:
         return StreamBuilder<QuerySnapshot>(
-          stream: _firestore
-              .collection('readingresult')
-              .where('studentid', isEqualTo: widget.student.id)
-              .snapshots(),
+          stream: memo(
+            ('inline1', widget.student.id),
+            () => _firestore
+                .collection('readingresult')
+                .where('studentid', isEqualTo: widget.student.id)
+                .snapshots(),
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -806,7 +805,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       FutureBuilder<String>(
-                        future: _getAssessmentName(item.assessmentid),
+                        future: memo((
+                          '_getAssessmentName',
+                          item.assessmentid,
+                        ), () => _getAssessmentName(item.assessmentid)),
                         builder: (context, snap) {
                           final title = snap.data ?? item.assessmentid;
                           return Row(
@@ -870,10 +872,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       // Comprehension Results
       case 1:
         return StreamBuilder<QuerySnapshot>(
-          stream: _firestore
-              .collection('comprehensionresult')
-              .where('studentid', isEqualTo: widget.student.id)
-              .snapshots(),
+          stream: memo(
+            ('inline2', widget.student.id),
+            () => _firestore
+                .collection('comprehensionresult')
+                .where('studentid', isEqualTo: widget.student.id)
+                .snapshots(),
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -902,7 +907,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               children: [
                 // Insight + chart section
                 FutureBuilder<Map<String, String>>(
-                  future: _getAssessmentTitles(results),
+                  future: memo((
+                    '_getAssessmentTitles',
+                    Object.hashAll(results.map((r) => r.assessmentid)),
+                  ), () => _getAssessmentTitles(results)),
                   builder: (context, snap) {
                     if (!snap.hasData) {
                       return const Center(
@@ -956,7 +964,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           FutureBuilder<String>(
-                            future: _getAssessmentName(item.assessmentid),
+                            future: memo((
+                              '_getAssessmentName',
+                              item.assessmentid,
+                            ), () => _getAssessmentName(item.assessmentid)),
                             builder: (context, snap) {
                               if (snap.connectionState ==
                                   ConnectionState.waiting) {
@@ -1063,10 +1074,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       // Overall Results
       case 2:
         return StreamBuilder<QuerySnapshot>(
-          stream: _firestore
-              .collection('overallresult')
-              .where('studentid', isEqualTo: widget.student.id)
-              .snapshots(),
+          stream: memo(
+            ('inline3', widget.student.id),
+            () => _firestore
+                .collection('overallresult')
+                .where('studentid', isEqualTo: widget.student.id)
+                .snapshots(),
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -1091,7 +1105,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               itemBuilder: (context, index) {
                 final item = histories[index];
                 return FutureBuilder<String>(
-                  future: _getAssessmentName(item.assessmentid),
+                  future: memo((
+                    '_getAssessmentName',
+                    item.assessmentid,
+                  ), () => _getAssessmentName(item.assessmentid)),
                   builder: (context, snap) {
                     final assessmentTitle = snap.data ?? "Unknown Assessment";
                     return _cardBox(
@@ -1294,10 +1311,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           children: [
             // ── Profile header card ─────────────────────────────────────────
             StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('students')
-                  .doc(widget.student.id)
-                  .snapshots(),
+              stream: memo(
+                ('inline4', widget.student.id),
+                () => FirebaseFirestore.instance
+                    .collection('students')
+                    .doc(widget.student.id)
+                    .snapshots(),
+              ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(

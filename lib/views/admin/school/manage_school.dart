@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/core/firestore_collections.dart';
@@ -6,9 +7,7 @@ import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/theme.dart';
 import 'package:ireader_mobile_edition/views/admin/school/add_school_dialog.dart';
 import 'package:ireader_mobile_edition/views/admin/school/compare_school.dart';
-import 'package:ireader_mobile_edition/views/admin/school/migrate_school_dialog.dart';
 import 'package:ireader_mobile_edition/views/admin/schoolyear/manage_schoolyear.dart';
-import 'package:ireader_mobile_edition/widgets/admin_sidebar.dart';
 import 'package:ireader_mobile_edition/widgets/admin_top_header.dart';
 
 class ManageSchoolScreen extends StatefulWidget {
@@ -19,7 +18,8 @@ class ManageSchoolScreen extends StatefulWidget {
   State<ManageSchoolScreen> createState() => _ManageSchoolScreenState();
 }
 
-class _ManageSchoolScreenState extends State<ManageSchoolScreen> {
+class _ManageSchoolScreenState extends State<ManageSchoolScreen>
+    with MemoMixin<ManageSchoolScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
@@ -98,7 +98,7 @@ class _ManageSchoolScreenState extends State<ManageSchoolScreen> {
                 ),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _fetchSchools(),
+                    stream: memo('_fetchSchools', () => _fetchSchools()),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return const Center(

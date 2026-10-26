@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,7 +22,7 @@ class RCDashboard extends StatefulWidget {
   State<RCDashboard> createState() => _RCDashboardState();
 }
 
-class _RCDashboardState extends State<RCDashboard> {
+class _RCDashboardState extends State<RCDashboard> with MemoMixin<RCDashboard> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   RC? _activeRC;
 
@@ -2202,7 +2203,10 @@ class _RCDashboardState extends State<RCDashboard> {
                 _buildTopHeader(),
                 Expanded(
                   child: StreamBuilder<List<SchoolYear>>(
-                    stream: _fetchSchoolYears(),
+                    stream: memo(
+                      '_fetchSchoolYears',
+                      () => _fetchSchoolYears(),
+                    ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return const Center(

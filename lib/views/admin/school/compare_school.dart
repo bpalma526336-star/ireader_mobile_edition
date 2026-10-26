@@ -129,15 +129,21 @@ class _CompareSchoolState extends State<CompareSchool> {
         for (final school in _schools) school.id: _emptyCounts(),
       };
 
+      // Run all chunk queries at once instead of one after another.
+      final resultsFutures1 = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
       for (var i = 0; i < assessmentIds.length; i += 10) {
         final ids = assessmentIds.sublist(
           i,
           math.min(i + 10, assessmentIds.length),
         );
-        final results = await _firestore
-            .collection('overallresult')
-            .where('assessmentid', whereIn: ids)
-            .get();
+        resultsFutures1.add(
+          _firestore
+              .collection('overallresult')
+              .where('assessmentid', whereIn: ids)
+              .get(),
+        );
+      }
+      for (final results in await Future.wait(resultsFutures1)) {
         for (final doc in results.docs) {
           final result = doc.data();
           final studentId = (result['studentid'] ?? '').toString();

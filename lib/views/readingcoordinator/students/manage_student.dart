@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/readingcoordinator.dart';
@@ -23,7 +24,8 @@ class RCManageStudentScreen extends StatefulWidget {
   State<RCManageStudentScreen> createState() => _RCManageStudentScreenState();
 }
 
-class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
+class _RCManageStudentScreenState extends State<RCManageStudentScreen>
+    with MemoMixin<RCManageStudentScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -488,12 +490,20 @@ class _RCManageStudentScreenState extends State<RCManageStudentScreen> {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('students')
-            .where('sectionid', isEqualTo: widget.section.id)
-            .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-            .where('schoolid', isEqualTo: widget.readingcoordinator.schoolid)
-            .snapshots(),
+        stream: memo(
+          (
+            'inline1',
+            widget.readingcoordinator.schoolid,
+            widget.schoolyear.id,
+            widget.section.id,
+          ),
+          () => FirebaseFirestore.instance
+              .collection('students')
+              .where('sectionid', isEqualTo: widget.section.id)
+              .where('schoolyearid', isEqualTo: widget.schoolyear.id)
+              .where('schoolid', isEqualTo: widget.readingcoordinator.schoolid)
+              .snapshots(),
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(

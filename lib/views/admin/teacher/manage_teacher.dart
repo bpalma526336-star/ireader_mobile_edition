@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/widgets/admin_sidebar.dart';
@@ -14,7 +15,8 @@ class ManageTeacherScreen extends StatefulWidget {
   State<ManageTeacherScreen> createState() => _ManageTeacherScreenState();
 }
 
-class _ManageTeacherScreenState extends State<ManageTeacherScreen> {
+class _ManageTeacherScreenState extends State<ManageTeacherScreen>
+    with MemoMixin<ManageTeacherScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
@@ -67,7 +69,7 @@ class _ManageTeacherScreenState extends State<ManageTeacherScreen> {
                 ),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: fetchTeachers(),
+                    stream: memo('fetchTeachers', () => fetchTeachers()),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return const Center(

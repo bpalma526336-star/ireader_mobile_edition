@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/widgets/admin_sidebar.dart';
@@ -14,7 +15,8 @@ class ManageAdminScreen extends StatefulWidget {
   State<ManageAdminScreen> createState() => _ManageAdminScreenState();
 }
 
-class _ManageAdminScreenState extends State<ManageAdminScreen> {
+class _ManageAdminScreenState extends State<ManageAdminScreen>
+    with MemoMixin<ManageAdminScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
@@ -67,7 +69,7 @@ class _ManageAdminScreenState extends State<ManageAdminScreen> {
                 ),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _fetchAdmins(),
+                    stream: memo('_fetchAdmins', () => _fetchAdmins()),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return const Center(

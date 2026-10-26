@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/assessment.dart';
@@ -5,6 +6,7 @@ import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/theme.dart';
+import 'package:ireader_mobile_edition/widgets/fun_ui.dart';
 import 'package:ireader_mobile_edition/views/admin/assessments/add_assessment.dart';
 import 'package:ireader_mobile_edition/views/admin/assessments/edit_assessment.dart';
 
@@ -23,7 +25,8 @@ class ManageAssessment extends StatefulWidget {
   State<ManageAssessment> createState() => _ManageAssessmentState();
 }
 
-class _ManageAssessmentState extends State<ManageAssessment> {
+class _ManageAssessmentState extends State<ManageAssessment>
+    with MemoMixin<ManageAssessment> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<QuerySnapshot> _fetchAssessments() {
@@ -133,7 +136,7 @@ class _ManageAssessmentState extends State<ManageAssessment> {
             // 🔥 LIST SECTION
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: _fetchAssessments(),
+                stream: memo('_fetchAssessments', () => _fetchAssessments()),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -350,7 +353,7 @@ class _ManageAssessmentState extends State<ManageAssessment> {
   }
 
   List<PopupMenuEntry<String>> _buildMenuItems(Assessment assessment) {
-    final vis = assessment.visibility ?? '';
+    final vis = assessment.visibility;
 
     return [
       const PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -381,6 +384,27 @@ class _ManageAssessmentState extends State<ManageAssessment> {
         ),
       );
     } else if (value == 'delete') {
+      // Count linked student results so the warning is concrete.
+      final counts = await Future.wait([
+        for (final c in ['readingresult', 'comprehensionresult'])
+          _firestore
+              .collection(c)
+              .where('assessmentid', isEqualTo: assessment.id)
+              .count()
+              .get(),
+      ]);
+      final linked = counts.fold<int>(0, (sum, c) => sum + (c.count ?? 0));
+      if (!mounted) return;
+      final ok = await confirmDelete(
+        context,
+        title: 'Delete this assessment?',
+        message: linked == 0
+            ? 'This cannot be undone.'
+            : '$linked student result(s) are linked to this assessment and '
+                  'will no longer show its title. Consider hiding it from '
+                  'students instead. This cannot be undone.',
+      );
+      if (!ok) return;
       await _firestore.collection('assessment').doc(assessment.id).delete();
     } else if (value == 'view') {
       await _updateVisibility(assessment.id, 'View to Students');

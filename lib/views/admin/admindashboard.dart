@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,8 @@ class AdminDashboard extends StatefulWidget {
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState extends State<AdminDashboard>
+    with MemoMixin<AdminDashboard> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   SchoolYear? _startYear;
@@ -221,13 +223,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     // Fetch assessments in batches of 10 (Firestore whereIn limit).
     final Map<String, String> assessmentStageMap = {};
+    // Run all chunk queries at once instead of one after another.
+    final snapFutures1 = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
     for (int i = 0; i < yearIds.length; i += 10) {
       final end = (i + 10).clamp(0, yearIds.length);
       final chunk = yearIds.sublist(i, end);
-      final snap = await _firestore
-          .collection('assessment')
-          .where('schoolyearid', whereIn: chunk)
-          .get();
+      snapFutures1.add(
+        _firestore
+            .collection('assessment')
+            .where('schoolyearid', whereIn: chunk)
+            .get(),
+      );
+    }
+    for (final snap in await Future.wait(snapFutures1)) {
       for (final doc in snap.docs) {
         final title = doc.data()['assessmenttitle'] as String?;
         if (_assessmentStages.contains(title)) {
@@ -247,13 +255,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
     };
 
     Future<void> fetchAndCount(List<String> ids, String stage) async {
+      // Run all chunk queries at once instead of one after another.
+      final snapFutures2 = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
       for (int i = 0; i < ids.length; i += 10) {
         final end = (i + 10).clamp(0, ids.length);
         final chunk = ids.sublist(i, end);
-        final snap = await _firestore
-            .collection('overallresult')
-            .where('assessmentid', whereIn: chunk)
-            .get();
+        snapFutures2.add(
+          _firestore
+              .collection('overallresult')
+              .where('assessmentid', whereIn: chunk)
+              .get(),
+        );
+      }
+      for (final snap in await Future.wait(snapFutures2)) {
         for (final doc in snap.docs) {
           final level = doc.data()['readlevel'] as String? ?? '';
           if (_prePostCounts[stage]!.containsKey(level)) {
@@ -2647,7 +2661,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 Expanded(
                   child: StreamBuilder<List<SchoolYear>>(
-                    stream: _fetchSchoolYears(),
+                    stream: memo(
+                      '_fetchSchoolYears',
+                      () => _fetchSchoolYears(),
+                    ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return const Center(

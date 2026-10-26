@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/core/firestore_collections.dart';
@@ -16,7 +17,8 @@ class ManageDivisionScreen extends StatefulWidget {
   State<ManageDivisionScreen> createState() => _ManageDivisionScreenState();
 }
 
-class _ManageDivisionScreenState extends State<ManageDivisionScreen> {
+class _ManageDivisionScreenState extends State<ManageDivisionScreen>
+    with MemoMixin<ManageDivisionScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
@@ -60,7 +62,7 @@ class _ManageDivisionScreenState extends State<ManageDivisionScreen> {
                 ),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _fetchDivisions(),
+                    stream: memo('_fetchDivisions', () => _fetchDivisions()),
                     builder: (context, snapshot) {
                       if (snapshot.hasError)
                         return const Center(

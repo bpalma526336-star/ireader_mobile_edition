@@ -133,13 +133,21 @@ class _CompareDivisionState extends State<CompareDivision> {
           division.id: {'Frustration': 0, 'Instructional': 0, 'Independent': 0},
       };
 
+      // Run all chunk queries at once instead of one after another.
+      final resultsSnapshotFutures1 =
+          <Future<QuerySnapshot<Map<String, dynamic>>>>[];
       for (var index = 0; index < assessmentIds.length; index += 10) {
         final end = math.min(index + 10, assessmentIds.length);
-        final resultsSnapshot = await _firestore
-            .collection('overallresult')
-            .where('assessmentid', whereIn: assessmentIds.sublist(index, end))
-            .get();
-
+        resultsSnapshotFutures1.add(
+          _firestore
+              .collection('overallresult')
+              .where('assessmentid', whereIn: assessmentIds.sublist(index, end))
+              .get(),
+        );
+      }
+      for (final resultsSnapshot in await Future.wait(
+        resultsSnapshotFutures1,
+      )) {
         for (final resultDoc in resultsSnapshot.docs) {
           final result = resultDoc.data();
           final studentId = (result['studentid'] ?? '').toString();

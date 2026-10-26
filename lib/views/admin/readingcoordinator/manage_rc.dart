@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/widgets/admin_sidebar.dart';
@@ -14,7 +15,8 @@ class ManageRcScreen extends StatefulWidget {
   State<ManageRcScreen> createState() => _ManageRcScreenState();
 }
 
-class _ManageRcScreenState extends State<ManageRcScreen> {
+class _ManageRcScreenState extends State<ManageRcScreen>
+    with MemoMixin<ManageRcScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
@@ -70,7 +72,7 @@ class _ManageRcScreenState extends State<ManageRcScreen> {
                 ),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: fetchRC(),
+                    stream: memo('fetchRC', () => fetchRC()),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return const Center(

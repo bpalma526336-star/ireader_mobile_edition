@@ -1,3 +1,5 @@
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/parent.dart';
@@ -17,7 +19,8 @@ class ViewParentStudent extends StatefulWidget {
   State<ViewParentStudent> createState() => _ViewParentStudentState();
 }
 
-class _ViewParentStudentState extends State<ViewParentStudent> {
+class _ViewParentStudentState extends State<ViewParentStudent>
+    with MemoMixin<ViewParentStudent> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   Stream<List<Student>> getStudentsStream(List<String> studentIds) {
@@ -66,10 +69,7 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
       return null;
     }
 
-    final doc = await firestore
-        .collection('schoolyears')
-        .doc(schoolYearId)
-        .get();
+    final doc = await FirestoreCache.doc('schoolyears', schoolYearId);
 
     if (!doc.exists) {
       return null;
@@ -83,7 +83,7 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
       return null;
     }
 
-    final doc = await firestore.collection('sections').doc(sectionId).get();
+    final doc = await FirestoreCache.doc('sections', sectionId);
 
     if (!doc.exists) {
       return null;
@@ -142,10 +142,13 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
       body: widget.parent == null
           ? _emptyState('Parent not found.')
           : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: firestore
-                  .collection('parents')
-                  .doc(widget.parent!.id)
-                  .snapshots(),
+              stream: memo(
+                ('inline1', widget.parent!.id),
+                () => firestore
+                    .collection('parents')
+                    .doc(widget.parent!.id)
+                    .snapshots(),
+              ),
               builder: (context, parentSnapshot) {
                 if (parentSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -168,7 +171,10 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
                     '${liveParent.firstname} ${liveParent.lastname}';
 
                 return StreamBuilder<List<Student>>(
-                  stream: getStudentsStream(liveParent.studentids ?? []),
+                  stream: memo((
+                    'getStudentsStream',
+                    liveParent.studentids ?? [],
+                  ), () => getStudentsStream(liveParent.studentids ?? [])),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
@@ -355,7 +361,10 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
                     ),
 
                     FutureBuilder<Section?>(
-                      future: getSection(student.sectionid),
+                      future: memo((
+                        'getSection',
+                        student.sectionid,
+                      ), () => getSection(student.sectionid)),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -381,7 +390,10 @@ class _ViewParentStudentState extends State<ViewParentStudent> {
                       },
                     ),
                     FutureBuilder<SchoolYear?>(
-                      future: getSchoolYear(student.schoolyearid),
+                      future: memo((
+                        'getSchoolYear',
+                        student.schoolyearid,
+                      ), () => getSchoolYear(student.schoolyearid)),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {

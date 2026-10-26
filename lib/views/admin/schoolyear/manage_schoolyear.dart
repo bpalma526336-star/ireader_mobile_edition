@@ -1,9 +1,11 @@
+import 'package:ireader_mobile_edition/core/safe_file_name.dart';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
-import 'package:ireader_mobile_edition/widgets/admin_sidebar.dart';
 import 'package:ireader_mobile_edition/widgets/admin_top_header.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
@@ -30,7 +32,8 @@ class ManageSchoolyearScreen extends StatefulWidget {
   State<ManageSchoolyearScreen> createState() => _ManageSchoolyearScreenState();
 }
 
-class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen> {
+class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen>
+    with MemoMixin<ManageSchoolyearScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final List<String> studentreads = ["Overall Result", "Comprehension Result"];
@@ -384,19 +387,23 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen> {
 
       int row = 7;
 
-      for (final sec in sections.docs) {
-        final teacherSnap = await _firestore
-            .collection('teachers')
-            .doc(sec['teacherid'])
-            .get();
+      // Load every section's teacher and counts in parallel.
+      final perSection = await Future.wait(
+        sections.docs.map((sec) async {
+          final teacher = FirestoreCache.doc('teachers', sec['teacherid']);
+          final counts = countSectionResults(
+            sectionId: sec.id,
+            assessmentId: assessmentId,
+          );
+          return (sec, await teacher, await counts);
+        }),
+      );
 
-        final counts = await countSectionResults(
-          sectionId: sec.id,
-          assessmentId: assessmentId,
-        );
-
+      for (final (sec, teacherSnap, counts) in perSection) {
         sheet.getRangeByName('A$row').setText(sec['sectionname']);
-        sheet.getRangeByName('C$row').setText(teacherSnap['lastname']);
+        sheet
+            .getRangeByName('C$row')
+            .setText(teacherSnap.data()?['lastname']?.toString() ?? '');
 
         final values = [
           counts['fm'],
@@ -446,7 +453,7 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen> {
     workbook.dispose();
     final directory = await getApplicationDocumentsDirectory();
     final filePath =
-        '${directory.path}/School Year ${schoolyear['schoolyearstart']} - ${schoolyear['schoolyearend']} Result.xlsx';
+        '${directory.path}/School Year ${safeFileName(schoolyear['schoolyearstart'])} - ${safeFileName(schoolyear['schoolyearend'])} Result.xlsx';
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);
     await OpenFile.open(filePath);
@@ -555,7 +562,10 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen> {
                 ),
                 Expanded(
                   child: StreamBuilder<List<SchoolYear>>(
-                    stream: _fetchSchoolYears(),
+                    stream: memo(
+                      '_fetchSchoolYears',
+                      () => _fetchSchoolYears(),
+                    ),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
@@ -666,8 +676,15 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen> {
                                         ),
                                         const SizedBox(height: 12),
                                         StreamBuilder<Map<String, int>>(
-                                          stream: _fetchStudentReadLevels(
-                                            schoolyear.id,
+                                          stream: memo(
+                                            (
+                                              '_fetchStudentReadLevels',
+                                              schoolyear.id,
+                                              _selectedReadType,
+                                            ),
+                                            () => _fetchStudentReadLevels(
+                                              schoolyear.id,
+                                            ),
                                           ),
                                           builder: (context, snap) {
                                             final counts =

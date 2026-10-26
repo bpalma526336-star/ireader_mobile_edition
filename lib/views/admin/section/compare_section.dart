@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -84,11 +85,16 @@ class _CompareSectionState extends State<CompareSection> {
       sections.sort((a, b) => a.sectionname.compareTo(b.sectionname));
 
       final teacherNames = <String, String>{};
+      // Warm the cache for all teachers in parallel; the loop below then
+      // reads them instantly.
+      await Future.wait([
+        for (final s in sections) FirestoreCache.doc('teachers', s.teacherid),
+      ]);
       for (final section in sections) {
-        final teacherDoc = await _firestore
-            .collection('teachers')
-            .doc(section.teacherid)
-            .get();
+        final teacherDoc = await FirestoreCache.doc(
+          'teachers',
+          section.teacherid,
+        );
 
         if (teacherDoc.exists) {
           final data = teacherDoc.data() ?? {};
@@ -186,15 +192,23 @@ class _CompareSectionState extends State<CompareSection> {
       }
 
       if (assessmentIds.isNotEmpty) {
+        // Run all chunk queries at once instead of one after another.
+        final resultsSnapshotFutures1 =
+            <Future<QuerySnapshot<Map<String, dynamic>>>>[];
         for (int i = 0; i < assessmentIds.length; i += 10) {
           final end = math.min(i + 10, assessmentIds.length);
           final chunk = assessmentIds.sublist(i, end);
 
-          final resultsSnapshot = await _firestore
-              .collection('overallresult')
-              .where('assessmentid', whereIn: chunk)
-              .get();
-
+          resultsSnapshotFutures1.add(
+            _firestore
+                .collection('overallresult')
+                .where('assessmentid', whereIn: chunk)
+                .get(),
+          );
+        }
+        for (final resultsSnapshot in await Future.wait(
+          resultsSnapshotFutures1,
+        )) {
           for (final resultDoc in resultsSnapshot.docs) {
             final result = resultDoc.data();
             final studentId = (result['studentid'] ?? '').toString();

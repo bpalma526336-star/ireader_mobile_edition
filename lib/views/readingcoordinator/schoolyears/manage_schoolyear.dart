@@ -1,11 +1,9 @@
-import 'dart:convert';
+import 'package:ireader_mobile_edition/core/safe_file_name.dart';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:math' as math;
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:ireader_mobile_edition/auth/login.dart';
 import 'package:ireader_mobile_edition/model/readingcoordinator.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
@@ -13,17 +11,11 @@ import 'package:ireader_mobile_edition/model/student.dart';
 import 'package:ireader_mobile_edition/model/studentoverallresult.dart';
 import 'package:ireader_mobile_edition/theme.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/assessments/manage_assessment.dart';
-import 'package:ireader_mobile_edition/views/readingcoordinator/practice_set/select_practice_set.dart';
-import 'package:ireader_mobile_edition/views/readingcoordinator/rcdashboard.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/sections/manage_section.dart';
 import 'package:ireader_mobile_edition/widgets/readingcoordinator_sidebar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:open_file/open_file.dart';
 
 class RCManageSchoolyearScreen extends StatefulWidget {
@@ -35,7 +27,8 @@ class RCManageSchoolyearScreen extends StatefulWidget {
       _RCManageSchoolyearScreenState();
 }
 
-class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen> {
+class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen>
+    with MemoMixin<RCManageSchoolyearScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final List<String> studentreads = ["Overall Result", "Comprehension Result"];
   String _selectedReadType = "Overall Result";
@@ -284,17 +277,23 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen> {
       buildHeaders(sheet, title);
 
       int row = 7;
-      for (final sec in sections.docs) {
-        final teacherSnap = await _firestore
-            .collection('teachers')
-            .doc(sec['teacherid'])
-            .get();
-        final counts = await countSectionResults(
-          sectionId: sec.id,
-          assessmentId: assessmentId,
-        );
+      // Load every section's teacher and counts in parallel.
+      final perSection = await Future.wait(
+        sections.docs.map((sec) async {
+          final teacher = FirestoreCache.doc('teachers', sec['teacherid']);
+          final counts = countSectionResults(
+            sectionId: sec.id,
+            assessmentId: assessmentId,
+          );
+          return (sec, await teacher, await counts);
+        }),
+      );
+
+      for (final (sec, teacherSnap, counts) in perSection) {
         sheet.getRangeByName('A$row').setText(sec['sectionname']);
-        sheet.getRangeByName('C$row').setText(teacherSnap['lastname']);
+        sheet
+            .getRangeByName('C$row')
+            .setText(teacherSnap.data()?['lastname']?.toString() ?? '');
         final values = [
           counts['fm'],
           counts['ff'],
@@ -335,7 +334,7 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen> {
 
     final directory = (await getApplicationDocumentsDirectory()).path;
     final filePath =
-        '$directory/School Year ${schoolyear['schoolyearstart']} - ${schoolyear['schoolyearend']} Result.xlsx';
+        '$directory/School Year ${safeFileName(schoolyear['schoolyearstart'])} - ${safeFileName(schoolyear['schoolyearend'])} Result.xlsx';
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);
     OpenFile.open(filePath);
@@ -418,7 +417,12 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen> {
           minChildSize: 0.35,
           maxChildSize: 0.93,
           builder: (_, scrollController) => FutureBuilder<List<Map<String, dynamic>>>(
-            future: _fetchStudentsByLevel(schoolyearid, level),
+            future: memo((
+              '_fetchStudentsByLevel',
+              schoolyearid,
+              level,
+              _selectedReadType,
+            ), () => _fetchStudentsByLevel(schoolyearid, level)),
             builder: (ctx, snap) {
               final students = snap.data ?? [];
               final isLoading = snap.connectionState == ConnectionState.waiting;
@@ -1064,7 +1068,10 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen> {
                                         StreamBuilder<
                                           List<Map<String, dynamic>>
                                         >(
-                                          stream: _studentStream(schoolyear.id),
+                                          stream: memo(
+                                            ('_studentStream', schoolyear.id),
+                                            () => _studentStream(schoolyear.id),
+                                          ),
                                           builder: (context, snap) {
                                             if (snap.connectionState ==
                                                 ConnectionState.waiting) {
