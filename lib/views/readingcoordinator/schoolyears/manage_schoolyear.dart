@@ -863,7 +863,7 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen>
               Icon(icon, size: 13),
               const SizedBox(width: 5),
             ],
-            Text(label),
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),
@@ -904,7 +904,12 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen>
                   children: [
                     // ── Page header ──────────────────────────────────────────
                     Container(
-                      padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        MediaQuery.paddingOf(context).top + 12,
+                        24,
+                        16,
+                      ),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         border: Border(
@@ -917,24 +922,50 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'School Years',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.textPrimaryColor,
-                            ),
+                          Row(
+                            children: [
+                              // The page has a drawer but nothing opened it.
+                              Builder(
+                                builder: (context) => IconButton(
+                                  tooltip: 'Open navigation menu',
+                                  onPressed: () =>
+                                      Scaffold.of(context).openDrawer(),
+                                  icon: const Icon(Icons.menu),
+                                  color: AppTheme.textPrimaryColor,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Expanded(
+                                child: Text(
+                                  'School Years',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimaryColor,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            'Phil-IRI $_selectedReadType · ${schoolYears.length} year${schoolYears.length == 1 ? '' : 's'}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondaryColor,
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Text(
+                              'Phil-IRI $_selectedReadType · ${schoolYears.length} year${schoolYears.length == 1 ? '' : 's'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondaryColor,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 14),
-                          SizedBox(width: 290, child: _buildResultToggle()),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: SizedBox(
+                              width: 290,
+                              child: _buildResultToggle(),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1340,54 +1371,82 @@ class _RCManageSchoolyearScreenState extends State<RCManageSchoolyearScreen>
                                         const SizedBox(height: 16),
 
                                         // Action buttons
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _cardButton(
-                                                label: 'View Sections',
-                                                icon: Icons.grid_view_rounded,
-                                                onTap: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => RCManageSection(
-                                                      schoolyear: schoolyear,
-                                                      readingcoordinator: widget
-                                                          .readingcoordinator,
-                                                    ),
+                                        // Three across overflowed on phones; there the export
+                                        // button moves to its own line.
+                                        Builder(
+                                          builder: (context) {
+                                            final viewSections = _cardButton(
+                                              label: 'View Sections',
+                                              icon: Icons.grid_view_rounded,
+                                              onTap: () => Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => RCManageSection(
+                                                    schoolyear: schoolyear,
+                                                    readingcoordinator: widget
+                                                        .readingcoordinator,
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: _cardButton(
-                                                label: 'Assessments',
-                                                icon: Icons.assignment_outlined,
-                                                onTap: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => ManageAssessment(
-                                                      schoolyear: schoolyear,
-                                                      readingcoordinator: widget
-                                                          .readingcoordinator,
-                                                    ),
-                                                  ),
+                                            );
+                                            final assessments = _cardButton(
+                                              label: 'Assessments',
+                                              icon: Icons.assignment_outlined,
+                                              onTap: () => Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ManageAssessment(
+                                                        schoolyear: schoolyear,
+                                                        readingcoordinator: widget
+                                                            .readingcoordinator,
+                                                      ),
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: _cardButton(
-                                                label: 'Export Results',
-                                                icon: Icons
-                                                    .file_download_outlined,
-                                                onTap: () =>
-                                                    exportschoolyeardata(
-                                                      schoolyear.id,
-                                                    ),
+                                            );
+                                            final export = _cardButton(
+                                              label: 'Export Results',
+                                              icon:
+                                                  Icons.file_download_outlined,
+                                              onTap: () => exportschoolyeardata(
+                                                schoolyear.id,
                                               ),
-                                            ),
-                                          ],
+                                            );
+                                            if (MediaQuery.sizeOf(
+                                                  context,
+                                                ).width <
+                                                520) {
+                                              return Column(
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: viewSections,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Expanded(
+                                                        child: assessments,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: export,
+                                                  ),
+                                                ],
+                                              );
+                                            }
+                                            return Row(
+                                              children: [
+                                                Expanded(child: viewSections),
+                                                const SizedBox(width: 8),
+                                                Expanded(child: assessments),
+                                                const SizedBox(width: 8),
+                                                Expanded(child: export),
+                                              ],
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),

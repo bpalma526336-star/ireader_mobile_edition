@@ -581,14 +581,258 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen>
                       }
                       final schoolYears = snapshot.data!;
 
+                      Widget buildCard(
+                        SchoolYear schoolyear,
+                        bool isCurrentYear,
+                      ) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderColor),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${schoolyear.schoolyearstart}-${schoolyear.schoolyearend}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.textPrimaryColor,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isCurrentYear
+                                            ? const Color(0xFFDCFCE7)
+                                            : AppTheme.backgroundColor,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        isCurrentYear ? 'CURRENT' : 'ARCHIVED',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: isCurrentYear
+                                              ? const Color(0xFF15803D)
+                                              : AppTheme.textSecondaryColor,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                StreamBuilder<Map<String, int>>(
+                                  stream: memo(
+                                    (
+                                      '_fetchStudentReadLevels',
+                                      schoolyear.id,
+                                      _selectedReadType,
+                                    ),
+                                    () =>
+                                        _fetchStudentReadLevels(schoolyear.id),
+                                  ),
+                                  builder: (context, snap) {
+                                    final counts =
+                                        snap.data ??
+                                        {
+                                          'Frustration': 0,
+                                          'Instructional': 0,
+                                          'Independent': 0,
+                                        };
+                                    final insight = generateReadingInsight(
+                                      counts,
+                                    );
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            _DonutChart(counts: counts),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  _legendRow(
+                                                    AppTheme.levelFrustration,
+                                                    'Frustration',
+                                                    counts['Frustration'] ?? 0,
+                                                  ),
+                                                  const SizedBox(height: 7),
+                                                  _legendRow(
+                                                    AppTheme.levelInstructional,
+                                                    'Instructional',
+                                                    counts['Instructional'] ??
+                                                        0,
+                                                  ),
+                                                  const SizedBox(height: 7),
+                                                  _legendRow(
+                                                    AppTheme.levelIndependent,
+                                                    'Independent',
+                                                    counts['Independent'] ?? 0,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          insight,
+                                          style: const TextStyle(
+                                            fontSize: 11.5,
+                                            color: AppTheme.textSecondaryColor,
+                                            height: 1.45,
+                                          ),
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                                if (screenWidth > 600)
+                                  const Spacer()
+                                else
+                                  const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _cardButton('Sections', () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ManageSection(
+                                              schoolyear: schoolyear,
+                                              school: widget.school,
+                                              division: widget.division,
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _cardButton('Edit Year', () {
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (_) => AddSchoolyearDialog(
+                                            schoolyear: schoolyear,
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _cardButton('Assessments', () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ManageAssessment(
+                                              schoolyear: schoolyear,
+                                              division: widget.division,
+                                              school: widget.school,
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _cardButton('Export', () async {
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
+                                        );
+                                        try {
+                                          await exportschoolyeardata(
+                                            schoolyear.id,
+                                          );
+                                        } catch (e) {
+                                          messenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Export failed: $e',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ManageSection(
+                                            schoolyear: schoolyear,
+                                            division: widget.division,
+                                            school: widget.school,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1E293B),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      minimumSize: const Size.fromHeight(36),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    child: const Text('View Full Report'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
                       return Column(
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                            child: Row(
+                            // Wrap so the year count drops to its own line
+                            // on phones instead of overflowing.
+                            child: Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 12,
+                              runSpacing: 8,
                               children: [
                                 _buildResultToggle(),
-                                const Spacer(),
                                 Text(
                                   '${schoolYears.length} of ${schoolYears.length} years',
                                   style: const TextStyle(
@@ -601,303 +845,46 @@ class _ManageSchoolyearScreenState extends State<ManageSchoolyearScreen>
                           ),
                           const SizedBox(height: 12),
                           Expanded(
-                            child: GridView.builder(
-                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                              gridDelegate:
-                                  SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: screenWidth <= 600
-                                        ? 600
-                                        : 380,
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
-                                    mainAxisExtent: 370,
-                                  ),
-                              itemCount: schoolYears.length,
-                              itemBuilder: (_, index) {
-                                final schoolyear = schoolYears[index];
-                                final isCurrentYear = index == 0;
-
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: AppTheme.borderColor,
+                            // Phones get a plain list so each card sizes to its
+                            // content; the fixed grid height clipped the buttons.
+                            child: screenWidth <= 600
+                                ? ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      24,
+                                    ),
+                                    itemCount: schoolYears.length,
+                                    separatorBuilder: (_, _) =>
+                                        const SizedBox(height: 16),
+                                    itemBuilder: (_, index) => buildCard(
+                                      schoolYears[index],
+                                      index == 0,
+                                    ),
+                                  )
+                                : GridView.builder(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      24,
+                                      0,
+                                      24,
+                                      24,
+                                    ),
+                                    gridDelegate:
+                                        SliverGridDelegateWithMaxCrossAxisExtent(
+                                          maxCrossAxisExtent: screenWidth <= 600
+                                              ? 600
+                                              : 380,
+                                          crossAxisSpacing: 16,
+                                          mainAxisSpacing: 16,
+                                          mainAxisExtent: 370,
+                                        ),
+                                    itemCount: schoolYears.length,
+                                    itemBuilder: (_, index) => buildCard(
+                                      schoolYears[index],
+                                      index == 0,
                                     ),
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              '${schoolyear.schoolyearstart}-${schoolyear.schoolyearend}',
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w800,
-                                                color:
-                                                    AppTheme.textPrimaryColor,
-                                              ),
-                                            ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 3,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: isCurrentYear
-                                                    ? const Color(0xFFDCFCE7)
-                                                    : AppTheme.backgroundColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                isCurrentYear
-                                                    ? 'CURRENT'
-                                                    : 'ARCHIVED',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: isCurrentYear
-                                                      ? const Color(0xFF15803D)
-                                                      : AppTheme
-                                                            .textSecondaryColor,
-                                                  letterSpacing: 0.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        StreamBuilder<Map<String, int>>(
-                                          stream: memo(
-                                            (
-                                              '_fetchStudentReadLevels',
-                                              schoolyear.id,
-                                              _selectedReadType,
-                                            ),
-                                            () => _fetchStudentReadLevels(
-                                              schoolyear.id,
-                                            ),
-                                          ),
-                                          builder: (context, snap) {
-                                            final counts =
-                                                snap.data ??
-                                                {
-                                                  'Frustration': 0,
-                                                  'Instructional': 0,
-                                                  'Independent': 0,
-                                                };
-                                            final insight =
-                                                generateReadingInsight(counts);
-                                            return Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    _DonutChart(counts: counts),
-                                                    const SizedBox(width: 16),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          _legendRow(
-                                                            AppTheme
-                                                                .levelFrustration,
-                                                            'Frustration',
-                                                            counts['Frustration'] ??
-                                                                0,
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 7,
-                                                          ),
-                                                          _legendRow(
-                                                            AppTheme
-                                                                .levelInstructional,
-                                                            'Instructional',
-                                                            counts['Instructional'] ??
-                                                                0,
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 7,
-                                                          ),
-                                                          _legendRow(
-                                                            AppTheme
-                                                                .levelIndependent,
-                                                            'Independent',
-                                                            counts['Independent'] ??
-                                                                0,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 12),
-                                                Text(
-                                                  insight,
-                                                  style: const TextStyle(
-                                                    fontSize: 11.5,
-                                                    color: AppTheme
-                                                        .textSecondaryColor,
-                                                    height: 1.45,
-                                                  ),
-                                                  maxLines: 3,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                        const Spacer(),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _cardButton(
-                                                'Sections',
-                                                () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          ManageSection(
-                                                            schoolyear:
-                                                                schoolyear,
-                                                            school:
-                                                                widget.school,
-                                                            division:
-                                                                widget.division,
-                                                          ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: _cardButton(
-                                                'Edit Year',
-                                                () {
-                                                  showDialog(
-                                                    context: context,
-                                                    barrierDismissible: false,
-                                                    builder: (_) =>
-                                                        AddSchoolyearDialog(
-                                                          schoolyear:
-                                                              schoolyear,
-                                                        ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _cardButton(
-                                                'Assessments',
-                                                () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          ManageAssessment(
-                                                            schoolyear:
-                                                                schoolyear,
-                                                            division:
-                                                                widget.division,
-                                                            school:
-                                                                widget.school,
-                                                          ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: _cardButton(
-                                                'Export',
-                                                () async {
-                                                  final messenger =
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      );
-                                                  try {
-                                                    await exportschoolyeardata(
-                                                      schoolyear.id,
-                                                    );
-                                                  } catch (e) {
-                                                    messenger.showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          'Export failed: $e',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          height: 36,
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => ManageSection(
-                                                    schoolyear: schoolyear,
-                                                    division: widget.division,
-                                                    school: widget.school,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF1E293B,
-                                              ),
-                                              foregroundColor: Colors.white,
-                                              elevation: 0,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              textStyle: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'View Full Report',
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
                           ),
                         ],
                       );

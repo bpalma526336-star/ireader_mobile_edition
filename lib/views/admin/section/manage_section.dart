@@ -20,6 +20,7 @@ import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:ireader_mobile_edition/widgets/admin_list.dart';
 
 class ManageSection extends StatefulWidget {
   final SchoolYear schoolyear;
@@ -491,121 +492,112 @@ class _ManageSectionState extends State<ManageSection>
   // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildToolbar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      color: Colors.white,
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 38,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search sections...',
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    size: 18,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.backgroundColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
+    return AdminListToolbar(
+      search: SizedBox(
+        height: 38,
+        child: TextField(
+          controller: _searchController,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: 'Search sections...',
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondaryColor,
+            ),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: AppTheme.textSecondaryColor,
+            ),
+            filled: true,
+            fillColor: AppTheme.backgroundColor,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 0,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppTheme.borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppTheme.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          _buildResultToggle(),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 38,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => AddSectionDialog(
-                    schoolyear: widget.schoolyear,
+        ),
+      ),
+      filters: [_buildResultToggle()],
+      actions: [
+        SizedBox(
+          height: 38,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => AddSectionDialog(
+                  schoolyear: widget.schoolyear,
+                  division: widget.division,
+                  school: widget.school,
+                ),
+              );
+            },
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Section'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 38,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CompareSection(
+                    schoolYear: widget.schoolyear,
                     division: widget.division,
                     school: widget.school,
                   ),
-                );
-              },
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add Section'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              );
+            },
+            icon: const Icon(Icons.compare_arrows, size: 16),
+            label: const Text('Compare Section'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.textPrimaryColor,
+              side: const BorderSide(color: AppTheme.borderColor),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 38,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CompareSection(
-                      schoolYear: widget.schoolyear,
-                      division: widget.division,
-                      school: widget.school,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.compare_arrows, size: 16),
-              label: const Text('Compare Section'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.textPrimaryColor,
-                side: const BorderSide(color: AppTheme.borderColor),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
