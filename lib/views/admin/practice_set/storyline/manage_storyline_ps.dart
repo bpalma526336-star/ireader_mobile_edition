@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
@@ -20,7 +21,7 @@ class ManageSLPS extends StatefulWidget {
   State<ManageSLPS> createState() => _ManageSLPSState();
 }
 
-class _ManageSLPSState extends State<ManageSLPS> {
+class _ManageSLPSState extends State<ManageSLPS> with MemoMixin<ManageSLPS> {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   String selectedFilter = "All";
   String selectedCategory = "All";
@@ -297,7 +298,10 @@ class _ManageSLPSState extends State<ManageSLPS> {
 
               // STORYLINE LIST
               StreamBuilder<QuerySnapshot>(
-                stream: _fetchStorylinePracticeSets(),
+                stream: memo(
+                  '_fetchStorylinePracticeSets',
+                  () => _fetchStorylinePracticeSets(),
+                ),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Center(child: Text("Error loading practice sets"));

@@ -87,6 +87,22 @@ flutter:
   assets:
     - assets/images/Department-of-Education-DepEd-Seal-300x300.png
     - assets/images/untitled-1.png
+    - assets/images/word_recognition.png
+    - assets/images/phrase.png
+    - assets/images/storyline.png
+
+  fonts:
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-400.ttf
+        - asset: assets/fonts/Nunito-600.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-700.ttf
+          weight: 700
+        - asset: assets/fonts/Nunito-800.ttf
+          weight: 800
+        - asset: assets/fonts/Nunito-900.ttf
+          weight: 900
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

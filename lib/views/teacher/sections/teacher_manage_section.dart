@@ -1,3 +1,6 @@
+import 'package:ireader_mobile_edition/core/safe_file_name.dart';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +14,8 @@ import 'package:ireader_mobile_edition/widgets/teacher_top_header.dart';
 import 'package:ireader_mobile_edition/views/teacher/assessments/viewassessment.dart';
 import 'package:ireader_mobile_edition/views/teacher/practice_set/select_practice_set.dart';
 import 'package:ireader_mobile_edition/views/teacher/students/manage_student.dart';
-import 'package:ireader_mobile_edition/views/teacher/teacher_mobile_header.dart';
+import 'package:ireader_mobile_edition/widgets/fun_ui.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
@@ -31,7 +35,8 @@ class TeacherManageSection extends StatefulWidget {
   State<TeacherManageSection> createState() => _TeacherManageSectionState();
 }
 
-class _TeacherManageSectionState extends State<TeacherManageSection> {
+class _TeacherManageSectionState extends State<TeacherManageSection>
+    with MemoMixin<TeacherManageSection> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final List<String> studentreads = ['Overall Result', 'Comprehension Result'];
@@ -63,41 +68,6 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
     }
   }
 
-  Stream<Map<String, int>> _fetchStudentReadLevels(
-    String sectionid,
-    String schoolyearid,
-  ) {
-    return _firestore
-        .collection('students')
-        .where('schoolyearid', isEqualTo: schoolyearid)
-        .where('schoolid', isEqualTo: widget.teacher.schoolid)
-        .where('divisionid', isEqualTo: widget.teacher.divisionid)
-        .where('sectionid', isEqualTo: sectionid)
-        .where('status', isEqualTo: 'ACTIVE')
-        .snapshots()
-        .map((snapshot) {
-          int frustration = 0, instructional = 0, independent = 0;
-          for (var doc in snapshot.docs) {
-            final data = doc.data();
-            final level = _selectedReadType == 'Overall Result'
-                ? (data['readlevel'] ?? '')
-                : (data['comprehensionresult'] ?? '');
-            if (level == 'Frustration') {
-              frustration++;
-            } else if (level == 'Instructional')
-              instructional++;
-            else if (level == 'Independent')
-              independent++;
-          }
-          return {
-            'Frustration': frustration,
-            'Instructional': instructional,
-            'Independent': independent,
-            'Total': snapshot.docs.length,
-          };
-        });
-  }
-
   Future<void> exportSectionStudents(Section section) async {
     final Workbook workbook = Workbook();
     final Worksheet sheet = workbook.worksheets[0];
@@ -123,10 +93,7 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
       ..hAlign = HAlignType.center
       ..vAlign = VAlignType.center;
 
-    final teacherSnap = await _firestore
-        .collection('teachers')
-        .doc(section.teacherid)
-        .get();
+    final teacherSnap = await FirestoreCache.doc('teachers', section.teacherid);
     final teacherName = teacherSnap.exists
         ? () {
             final middle = (teacherSnap['middlename'] as String?) ?? '';
@@ -194,7 +161,7 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
 
     final directory = (await getApplicationDocumentsDirectory()).path;
     final filePath =
-        '$directory/Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx';
+        '$directory/Phil-IRI_Student_List(Stage_2)_${safeFileName(section.sectionname)}.xlsx';
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);
     OpenFile.open(filePath);
@@ -203,11 +170,11 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
   // ─── RESULT TOGGLE ──────────────────────────────────────────
   Widget _buildResultToggle() {
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.borderColor),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: AppTheme.borderColor, width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -220,29 +187,21 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
               }
             },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ]
-                    : null,
+                color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(26),
               ),
               child: Text(
                 type,
                 style: TextStyle(
                   color: isSelected
-                      ? AppTheme.textPrimaryColor
+                      ? Colors.white
                       : AppTheme.textSecondaryColor,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -252,49 +211,91 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
     );
   }
 
+  /// Live student list for a section. Cached per section so switching the
+  /// Overall/Comprehension toggle only recounts locally instead of
+  /// re-subscribing to Firestore.
+  Stream<QuerySnapshot<Map<String, dynamic>>> _sectionStudents(
+    Section section,
+  ) {
+    return memo(
+      ('students', section.id, section.schoolyearid),
+      () => _firestore
+          .collection('students')
+          .where('schoolyearid', isEqualTo: section.schoolyearid)
+          .where('schoolid', isEqualTo: widget.teacher.schoolid)
+          .where('divisionid', isEqualTo: widget.teacher.divisionid)
+          .where('sectionid', isEqualTo: section.id)
+          .where('status', isEqualTo: 'ACTIVE')
+          .snapshots(),
+    );
+  }
+
+  Map<String, int> _countLevels(QuerySnapshot<Map<String, dynamic>>? snap) {
+    var f = 0, i = 0, ind = 0;
+    for (final doc in snap?.docs ?? const []) {
+      final data = doc.data();
+      final level = _selectedReadType == 'Overall Result'
+          ? (data['readlevel'] ?? '')
+          : (data['comprehensionresult'] ?? '');
+      if (level == 'Frustration') {
+        f++;
+      } else if (level == 'Instructional') {
+        i++;
+      } else if (level == 'Independent') {
+        ind++;
+      }
+    }
+    return {
+      'Frustration': f,
+      'Instructional': i,
+      'Independent': ind,
+      'Total': snap?.docs.length ?? 0,
+    };
+  }
+
+  static const _cardAccents = [
+    AppTheme.primaryColor,
+    AppTheme.mintColor,
+    AppTheme.grapeColor,
+    AppTheme.coralColor,
+    AppTheme.secondaryColor,
+  ];
+
   // ─── SECTION CARD ────────────────────────────────────────────
-  Widget _buildSectionCard(Section section) {
+  Widget _buildSectionCard(Section section, int index) {
+    final accent = _cardAccents[index % _cardAccents.length];
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: AppTheme.cardDecoration,
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Card header ──
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppTheme.borderColor)),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accent, Color.lerp(accent, Colors.white, 0.3)!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: AppTheme.radiusM,
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.class_outlined,
-                      size: 20,
-                      color: AppTheme.primaryColor,
-                    ),
+                  child: const Icon(
+                    Icons.groups_2_rounded,
+                    size: 26,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,29 +303,27 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
                       Text(
                         section.sectionname,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimaryColor,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 3),
-                      FutureBuilder<DocumentSnapshot>(
-                        future: _firestore
-                            .collection('schoolyears')
-                            .doc(section.schoolyearid)
-                            .get(),
+                      const SizedBox(height: 2),
+                      FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        future: FirestoreCache.doc(
+                          'schoolyears',
+                          section.schoolyearid,
+                        ),
                         builder: (context, sySnap) {
-                          if (!sySnap.hasData || !sySnap.data!.exists) {
-                            return const SizedBox.shrink();
-                          }
-                          final sy =
-                              sySnap.data!.data() as Map<String, dynamic>;
+                          final sy = sySnap.data?.data();
+                          if (sy == null) return const SizedBox(height: 16);
                           return Text(
-                            'SY ${sy['schoolyearstart']}-${sy['schoolyearend']}',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: AppTheme.textSecondaryColor,
+                            'School Year ${sy['schoolyearstart']}-${sy['schoolyearend']}',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white.withValues(alpha: 0.9),
                             ),
                           );
                         },
@@ -338,22 +337,15 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
 
           // ── Reading level stats ──
           Padding(
-            padding: const EdgeInsets.all(20),
-            child: StreamBuilder<Map<String, int>>(
-              stream: _fetchStudentReadLevels(section.id, section.schoolyearid),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _sectionStudents(section),
               builder: (context, snapshot) {
-                final counts =
-                    snapshot.data ??
-                    {
-                      'Frustration': 0,
-                      'Instructional': 0,
-                      'Independent': 0,
-                      'Total': 0,
-                    };
-                final f = counts['Frustration'] ?? 0;
-                final i = counts['Instructional'] ?? 0;
-                final ind = counts['Independent'] ?? 0;
-                final total = counts['Total'] ?? 0;
+                final counts = _countLevels(snapshot.data);
+                final f = counts['Frustration']!;
+                final i = counts['Instructional']!;
+                final ind = counts['Independent']!;
+                final total = counts['Total']!;
                 final displayCounts = {
                   'Frustration': f,
                   'Instructional': i,
@@ -364,123 +356,59 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Donut + legend side by side
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _DonutChart(counts: displayCounts),
-                        const SizedBox(width: 20),
+                        _DonutChart(counts: displayCounts, total: total),
+                        const SizedBox(width: 18),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Total students callout
-                              Row(
-                                children: [
-                                  Text(
-                                    '$total',
-                                    style: const TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.textPrimaryColor,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  const Text(
-                                    'total students',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
                               _legendRow(
-                                AppTheme.levelFrustration,
-                                'Frustration',
-                                f,
+                                AppTheme.levelIndependent,
+                                'Independent',
+                                ind,
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 8),
                               _legendRow(
                                 AppTheme.levelInstructional,
                                 'Instructional',
                                 i,
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 8),
                               _legendRow(
-                                AppTheme.levelIndependent,
-                                'Independent',
-                                ind,
+                                AppTheme.levelFrustration,
+                                'Frustration',
+                                f,
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-
-                    // Progress bar distribution
-                    if (total > 0) ...[
-                      const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: SizedBox(
-                          height: 6,
-                          child: Row(
-                            children: [
-                              if (f > 0)
-                                Expanded(
-                                  flex: f,
-                                  child: Container(
-                                    color: AppTheme.levelFrustration,
-                                  ),
-                                ),
-                              if (i > 0)
-                                Expanded(
-                                  flex: i,
-                                  child: Container(
-                                    color: AppTheme.levelInstructional,
-                                  ),
-                                ),
-                              if (ind > 0)
-                                Expanded(
-                                  flex: ind,
-                                  child: Container(
-                                    color: AppTheme.levelIndependent,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-
                     const SizedBox(height: 14),
-
-                    // Reading insight
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.borderColor),
+                        color: AppTheme.sunColor.withValues(alpha: 0.12),
+                        borderRadius: AppTheme.radiusM,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: AppTheme.textSecondaryColor,
+                            Icons.lightbulb_rounded,
+                            size: 18,
+                            color: Color(0xFFB7791F),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               insight,
                               style: const TextStyle(
-                                fontSize: 11.5,
-                                color: AppTheme.textSecondaryColor,
-                                height: 1.45,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                                height: 1.4,
                               ),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
@@ -496,25 +424,20 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
           ),
 
           // ── Action buttons ──
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+            child: GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.6,
               children: [
-                Row(
-                  children: [
-                    Expanded(child: _viewStudentsButton(section)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _viewAssessmentButton(section)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: _viewPracticeSetButton(section)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _exportButton(section)),
-                  ],
-                ),
+                _viewStudentsButton(section),
+                _viewAssessmentButton(section),
+                _viewPracticeSetButton(section),
+                _exportButton(section),
               ],
             ),
           ),
@@ -524,32 +447,36 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
   }
 
   Widget _legendRow(Color color, String label, int count) {
-    return Row(
-      children: [
-        Container(
-          width: 9,
-          height: 9,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondaryColor,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: AppTheme.radiusS,
+      ),
+      child: Row(
+        children: [
+          Icon(AppTheme.levelIcon(label), size: 16, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimaryColor,
+              ),
             ),
           ),
-        ),
-        Text(
-          '$count',
-          style: const TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimaryColor,
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: Color.lerp(color, Colors.black, 0.35),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -560,10 +487,10 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
       label: 'Students',
       isPrimary: true,
       onTap: () async {
-        final schoolYearDoc = await _firestore
-            .collection('schoolyears')
-            .doc(section.schoolyearid)
-            .get();
+        final schoolYearDoc = await FirestoreCache.doc(
+          'schoolyears',
+          section.schoolyearid,
+        );
         if (!schoolYearDoc.exists) return;
         final correctSchoolYear = SchoolYear.fromMap(
           schoolYearDoc.id,
@@ -590,10 +517,10 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
       label: 'Assessments',
       isPrimary: true,
       onTap: () async {
-        final schoolYearDoc = await _firestore
-            .collection('schoolyears')
-            .doc(section.schoolyearid)
-            .get();
+        final schoolYearDoc = await FirestoreCache.doc(
+          'schoolyears',
+          section.schoolyearid,
+        );
         if (!schoolYearDoc.exists) return;
         final correctSchoolYear = SchoolYear.fromMap(
           schoolYearDoc.id,
@@ -619,10 +546,10 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
       label: 'Practice Set',
       isPrimary: false,
       onTap: () async {
-        final schoolYearDoc = await _firestore
-            .collection('schoolyears')
-            .doc(section.schoolyearid)
-            .get();
+        final schoolYearDoc = await FirestoreCache.doc(
+          'schoolyears',
+          section.schoolyearid,
+        );
         if (!schoolYearDoc.exists) return;
         if (!mounted) return;
         Navigator.push(
@@ -660,26 +587,103 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
     required bool isPrimary,
     required VoidCallback onTap,
   }) {
-    return SizedBox(
-      height: 36,
-      child: ElevatedButton.icon(
-        icon: Icon(icon, size: 14),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? AppTheme.primaryColor : Colors.white,
-          foregroundColor: isPrimary ? Colors.white : AppTheme.textPrimaryColor,
-          elevation: 0,
-          side: isPrimary
-              ? null
-              : const BorderSide(color: AppTheme.borderColor),
+    final color = switch (label) {
+      'Students' => AppTheme.primaryColor,
+      'Assessments' => AppTheme.grapeColor,
+      'Practice Set' => AppTheme.mintColor,
+      _ => AppTheme.sunColor,
+    };
+    final filled = isPrimary;
+    return Material(
+      color: filled ? color : color.withValues(alpha: 0.12),
+      borderRadius: AppTheme.radiusM,
+      child: InkWell(
+        borderRadius: AppTheme.radiusM,
+        onTap: onTap,
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-          textStyle: const TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: filled
+                    ? Colors.white
+                    : Color.lerp(color, Colors.black, 0.3),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: filled
+                        ? Colors.white
+                        : Color.lerp(color, Colors.black, 0.35),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        onPressed: onTap,
+      ),
+    );
+  }
+
+  Widget _welcomeCard(bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 18 : 22),
+      decoration: const BoxDecoration(
+        gradient: AppTheme.heroGradient,
+        borderRadius: AppTheme.radiusL,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hello, ${widget.teacher.firstname}! 👋',
+                  style: TextStyle(
+                    fontSize: isMobile ? 22 : 26,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Here are your reading classes for '
+                  'SY ${widget.schoolyear.schoolyearstart}-${widget.schoolyear.schoolyearend}.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!isMobile) ...[
+            const SizedBox(width: 16),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.auto_stories_rounded,
+                color: Colors.white,
+                size: 38,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -687,13 +691,12 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
   // ─── BUILD ───────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.sizeOf(context).width;
     final isDesktop = screenWidth > 900;
     final isMobile = screenWidth <= 600;
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppTheme.backgroundColor,
       drawer: isDesktop
           ? null
           : Drawer(
@@ -715,181 +718,115 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
           Expanded(
             child: Column(
               children: [
-                if (isMobile)
-                  TeacherMobileHeader(
-                    teacher: widget.teacher,
-                    schoolyear: widget.schoolyear,
-                    onMenuPressed: () =>
-                        _scaffoldKey.currentState?.openDrawer(),
-                  )
-                else
-                  TeacherHeader(
-                    teacher: widget.teacher,
-                    schoolyear: widget.schoolyear,
-                    onMenuPressed: isDesktop
-                        ? null
-                        : () => _scaffoldKey.currentState?.openDrawer(),
-                  ),
-                Container(
-                  padding: EdgeInsets.fromLTRB(
-                    isMobile ? 16 : 28,
-                    isMobile ? 16 : 14,
-                    isMobile ? 16 : 24,
-                    isMobile ? 16 : 14,
-                  ),
-                  color: Colors.white,
-                  child: isMobile
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'My Sections',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Sections assigned to you for SY ${widget.schoolyear.schoolyearstart}-${widget.schoolyear.schoolyearend}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textSecondaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: _buildResultToggle(),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'My Sections',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.textPrimaryColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Sections assigned to you for SY ${widget.schoolyear.schoolyearstart}-${widget.schoolyear.schoolyearend}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            _buildResultToggle(),
-                          ],
-                        ),
+                TeacherHeader(
+                  teacher: widget.teacher,
+                  schoolyear: widget.schoolyear,
+                  compact: isMobile,
+                  onMenuPressed: isDesktop
+                      ? null
+                      : () => _scaffoldKey.currentState?.openDrawer(),
                 ),
-                const Divider(height: 1, color: AppTheme.borderColor),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore
-                        .collection('sections')
-                        .where('teacherid', isEqualTo: widget.teacher.id)
-                        .snapshots(),
+                    stream: memo(
+                      ('sections', widget.teacher.id),
+                      () => _firestore
+                          .collection('sections')
+                          .where('teacherid', isEqualTo: widget.teacher.id)
+                          .snapshots(),
+                    ),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          !snapshot.hasData) {
                         return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppTheme.primaryColor,
-                          ),
+                          child: BouncyLoader(label: 'Loading your classes…'),
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return const FunEmptyState(
+                          icon: Icons.wifi_off_rounded,
+                          color: AppTheme.coralColor,
+                          title: 'Could not load your sections',
+                          message:
+                              'Check your internet connection and try again.',
                         );
                       }
 
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: AppTheme.borderColor,
-                                  ),
+                      final sections =
+                          (snapshot.data?.docs ?? const [])
+                              .map(
+                                (doc) => Section.fromMap(
+                                  doc.id,
+                                  doc.data() as Map<String, dynamic>,
                                 ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.class_outlined,
-                                    size: 32,
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'No sections assigned yet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Contact your administrator to be assigned to a section.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textSecondaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      final sections = snapshot.data!.docs
-                          .map(
-                            (doc) => Section.fromMap(
-                              doc.id,
-                              doc.data() as Map<String, dynamic>,
-                            ),
-                          )
-                          .toList();
+                              )
+                              .toList()
+                            ..sort(
+                              (a, b) => a.sectionname.compareTo(b.sectionname),
+                            );
 
                       return LayoutBuilder(
                         builder: (context, constraints) {
                           final width = constraints.maxWidth;
-                          double cardWidth;
-                          final horizontalPadding = width <= 520 ? 16.0 : 24.0;
-                          if (width <= 520) {
-                            cardWidth = width - (horizontalPadding * 2);
-                          } else if (width <= 900) {
-                            cardWidth = (width - 64) / 2;
-                          } else {
-                            cardWidth = (width - 80) / 3;
-                          }
+                          final pad = width <= 520 ? 16.0 : 24.0;
+                          final columns = width <= 640
+                              ? 1
+                              : width <= 1000
+                              ? 2
+                              : 3;
+                          final cardWidth =
+                              (width - pad * 2 - (columns - 1) * 16) / columns;
 
-                          return SingleChildScrollView(
-                            padding: EdgeInsets.all(horizontalPadding),
-                            child: Wrap(
-                              spacing: 16,
-                              runSpacing: 16,
-                              children: sections.map((section) {
-                                return SizedBox(
-                                  width: cardWidth,
-                                  child: _buildSectionCard(section),
-                                );
-                              }).toList(),
-                            ),
+                          return ListView(
+                            padding: EdgeInsets.fromLTRB(pad, pad, pad, 32),
+                            children: [
+                              _welcomeCard(isMobile)
+                                  .animate()
+                                  .fadeIn(duration: 300.ms)
+                                  .slideY(begin: 0.05),
+                              const SizedBox(height: 20),
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                runSpacing: 12,
+                                spacing: 12,
+                                children: [
+                                  Text(
+                                    'My Sections (${sections.length})',
+                                    style: AppTheme.pageTitleStyle.copyWith(
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                  _buildResultToggle(),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              if (sections.isEmpty)
+                                const FunEmptyState(
+                                  icon: Icons.class_rounded,
+                                  title: 'No sections assigned yet',
+                                  message:
+                                      'Contact your administrator to be assigned to a section.',
+                                )
+                              else
+                                Wrap(
+                                  spacing: 16,
+                                  runSpacing: 16,
+                                  children: [
+                                    for (final (i, section) in sections.indexed)
+                                      SizedBox(
+                                        width: cardWidth,
+                                        child: _buildSectionCard(section, i)
+                                            .animate()
+                                            .fadeIn(
+                                              delay: (60 * i).ms,
+                                              duration: 300.ms,
+                                            )
+                                            .slideY(begin: 0.06),
+                                      ),
+                                  ],
+                                ),
+                            ],
                           );
                         },
                       );
@@ -908,19 +845,26 @@ class _TeacherManageSectionState extends State<TeacherManageSection> {
 // ─── DONUT CHART ─────────────────────────────────────────────
 class _DonutChart extends StatelessWidget {
   final Map<String, int> counts;
-  const _DonutChart({required this.counts});
+  final int total;
+  const _DonutChart({required this.counts, required this.total});
 
   @override
   Widget build(BuildContext context) {
-    final total =
+    final rated =
         (counts['Frustration'] ?? 0) +
         (counts['Instructional'] ?? 0) +
         (counts['Independent'] ?? 0);
     return SizedBox(
-      width: 96,
-      height: 96,
-      child: CustomPaint(
-        painter: _DonutPainter(counts: counts, total: total),
+      width: 108,
+      height: 108,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, child) => CustomPaint(
+          painter: _DonutPainter(counts: counts, total: rated, progress: t),
+          child: child,
+        ),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -928,15 +872,17 @@ class _DonutChart extends StatelessWidget {
               Text(
                 '$total',
                 style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 26,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.textPrimaryColor,
                 ),
               ),
               const Text(
-                'total',
+                'students',
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.textSecondaryColor,
                 ),
               ),
@@ -951,39 +897,43 @@ class _DonutChart extends StatelessWidget {
 class _DonutPainter extends CustomPainter {
   final Map<String, int> counts;
   final int total;
-  _DonutPainter({required this.counts, required this.total});
+  final double progress;
+  _DonutPainter({
+    required this.counts,
+    required this.total,
+    required this.progress,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.shortestSide / 2) - 8;
-    const strokeWidth = 14.0;
+    const strokeWidth = 15.0;
+    final radius = (size.shortestSide / 2) - strokeWidth / 2 - 1;
 
-    if (total == 0) {
-      canvas.drawCircle(
-        center,
-        radius,
-        Paint()
-          ..color = const Color(0xFFE2E8F0)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth,
-      );
-      return;
-    }
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = AppTheme.borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth,
+    );
+    if (total == 0) return;
 
     final segments = [
-      (key: 'Frustration', color: AppTheme.levelFrustration),
-      (key: 'Instructional', color: AppTheme.levelInstructional),
       (key: 'Independent', color: AppTheme.levelIndependent),
+      (key: 'Instructional', color: AppTheme.levelInstructional),
+      (key: 'Frustration', color: AppTheme.levelFrustration),
     ];
 
     double startAngle = -math.pi / 2;
-    const gap = 0.04;
+    const gap = 0.06;
 
     for (final seg in segments) {
       final value = counts[seg.key] ?? 0;
       if (value == 0) continue;
-      final sweep = (value / total) * 2 * math.pi - gap;
+      final full = (value / total) * 2 * math.pi;
+      final sweep = math.max(0.0, full * progress - gap);
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle + gap / 2,
@@ -995,11 +945,16 @@ class _DonutPainter extends CustomPainter {
           ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round,
       );
-      startAngle += sweep + gap;
+      startAngle += full * progress;
     }
   }
 
   @override
   bool shouldRepaint(covariant _DonutPainter old) =>
-      old.counts != counts || old.total != total;
+      old.progress != progress ||
+      old.total != total ||
+      !_sameCounts(old.counts, counts);
+
+  static bool _sameCounts(Map<String, int> a, Map<String, int> b) =>
+      a.length == b.length && a.keys.every((k) => a[k] == b[k]);
 }

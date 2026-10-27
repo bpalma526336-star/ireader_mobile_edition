@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/assessment.dart';
@@ -18,7 +19,8 @@ class ViewAssessment extends StatefulWidget {
   State<ViewAssessment> createState() => _ViewAssessmentState();
 }
 
-class _ViewAssessmentState extends State<ViewAssessment> {
+class _ViewAssessmentState extends State<ViewAssessment>
+    with MemoMixin<ViewAssessment> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<QuerySnapshot> _fetchAssessments() {
@@ -86,7 +88,7 @@ class _ViewAssessmentState extends State<ViewAssessment> {
             // 🔥 LIST SECTION
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: _fetchAssessments(),
+                stream: memo('_fetchAssessments', () => _fetchAssessments()),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

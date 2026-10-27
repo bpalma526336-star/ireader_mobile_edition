@@ -1,4 +1,5 @@
-import 'dart:convert';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/division.dart';
@@ -6,13 +7,11 @@ import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
-import 'package:ireader_mobile_edition/model/teacher.dart';
 import 'package:ireader_mobile_edition/theme.dart';
 import 'package:ireader_mobile_edition/views/admin/student/add_student.dart';
 import 'package:ireader_mobile_edition/views/admin/student/add_student_dialog.dart';
 import 'package:ireader_mobile_edition/views/admin/student/student_profile.dart';
 import 'package:ireader_mobile_edition/shared/import_students_dialog_admin.dart';
-import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 
 class ManageStudentScreen extends StatefulWidget {
   final SchoolYear schoolyear;
@@ -32,7 +31,8 @@ class ManageStudentScreen extends StatefulWidget {
   State<ManageStudentScreen> createState() => _ManageStudentScreenState();
 }
 
-class _ManageStudentScreenState extends State<ManageStudentScreen> {
+class _ManageStudentScreenState extends State<ManageStudentScreen>
+    with MemoMixin<ManageStudentScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   String? _teacherName;
@@ -50,10 +50,10 @@ class _ManageStudentScreenState extends State<ManageStudentScreen> {
   }
 
   Future<void> _fetchTeacherName() async {
-    final teacherSnapshot = await firestore
-        .collection('teachers')
-        .doc(widget.section.teacherid)
-        .get();
+    final teacherSnapshot = await FirestoreCache.doc(
+      'teachers',
+      widget.section.teacherid,
+    );
     if (teacherSnapshot.exists && mounted) {
       final d = teacherSnapshot.data()!;
       setState(() {
@@ -152,10 +152,10 @@ class _ManageStudentScreenState extends State<ManageStudentScreen> {
   // }
 
   Future<void> _openImportStudents() async {
-    final teacherSnapshot = await firestore
-        .collection('teachers')
-        .doc(widget.section.teacherid)
-        .get();
+    final teacherSnapshot = await FirestoreCache.doc(
+      'teachers',
+      widget.section.teacherid,
+    );
 
     if (!mounted) return;
 
@@ -676,11 +676,14 @@ class _ManageStudentScreenState extends State<ManageStudentScreen> {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('students')
-            .where('sectionid', isEqualTo: widget.section.id)
-            .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-            .snapshots(),
+        stream: memo(
+          ('inline1', widget.schoolyear.id, widget.section.id),
+          () => FirebaseFirestore.instance
+              .collection('students')
+              .where('sectionid', isEqualTo: widget.section.id)
+              .where('schoolyearid', isEqualTo: widget.schoolyear.id)
+              .snapshots(),
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(

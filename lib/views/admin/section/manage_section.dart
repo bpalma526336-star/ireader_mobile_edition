@@ -1,3 +1,6 @@
+import 'package:ireader_mobile_edition/core/safe_file_name.dart';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +20,7 @@ import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:ireader_mobile_edition/widgets/admin_list.dart';
 
 class ManageSection extends StatefulWidget {
   final SchoolYear schoolyear;
@@ -34,7 +38,8 @@ class ManageSection extends StatefulWidget {
   State<ManageSection> createState() => _ManageSectionState();
 }
 
-class _ManageSectionState extends State<ManageSection> {
+class _ManageSectionState extends State<ManageSection>
+    with MemoMixin<ManageSection> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   final List<String> studentreads = ["Overall Result", "Comprehension Result"];
@@ -187,18 +192,26 @@ class _ManageSectionState extends State<ManageSection> {
         .where('schoolyearid', isEqualTo: widget.schoolyear.id)
         .get();
 
-    for (var sectionDoc in sectionsSnap.docs) {
-      final section = Section.fromMap(sectionDoc.id, sectionDoc.data());
+    // Fetch every section's teacher and students in parallel instead of
+    // one section at a time.
+    final perSection = await Future.wait(
+      sectionsSnap.docs.map((sectionDoc) async {
+        final section = Section.fromMap(sectionDoc.id, sectionDoc.data());
+        final teacher = FirestoreCache.doc('teachers', section.teacherid);
+        final students = _firestore
+            .collection('students')
+            .where('sectionid', isEqualTo: section.id)
+            .where('schoolyearid', isEqualTo: widget.schoolyear.id)
+            .get();
+        return (section, await teacher, await students);
+      }),
+    );
 
-      final teacherSnap = await _firestore
-          .collection('teachers')
-          .doc(section.teacherid)
-          .get();
-
+    for (final (section, teacherSnap, studentsSnap) in perSection) {
       String teacherName = "Unknown";
 
       if (teacherSnap.exists) {
-        final data = teacherSnap.data() as Map<String, dynamic>;
+        final data = teacherSnap.data()!;
 
         final middle = (data['middlename'] ?? '').toString();
 
@@ -207,12 +220,6 @@ class _ManageSectionState extends State<ManageSection> {
             "${middle.isNotEmpty ? '$middle ' : ''}"
             "${data['lastname'] ?? ''}";
       }
-
-      final studentsSnap = await _firestore
-          .collection('students')
-          .where('sectionid', isEqualTo: section.id)
-          .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-          .get();
 
       for (var studentDoc in studentsSnap.docs) {
         final student = Student.fromMap(studentDoc.id, studentDoc.data());
@@ -276,10 +283,7 @@ class _ManageSectionState extends State<ManageSection> {
     // final teacherName = teacherSnap.exists
     //     ? "${teacherSnap['firstname']} ${teacherSnap['middlename']} ${teacherSnap['lastname']}"
     //     : 'Unknown';
-    final teacherSnap = await _firestore
-        .collection('teachers')
-        .doc(section.teacherid)
-        .get();
+    final teacherSnap = await FirestoreCache.doc('teachers', section.teacherid);
 
     String teacherName = 'Unknown';
 
@@ -355,7 +359,7 @@ class _ManageSectionState extends State<ManageSection> {
 
     final directory = await getApplicationDocumentsDirectory();
     final filePath =
-        '${directory.path}/Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx';
+        '${directory.path}/Phil-IRI_Student_List(Stage_2)_${safeFileName(section.sectionname)}.xlsx';
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);
     await OpenFile.open(filePath);
@@ -364,10 +368,7 @@ class _ManageSectionState extends State<ManageSection> {
   // ─── Open edit dialog/screen ───────────────────────────────────────────────
 
   Future<void> _openEditSection(Section section) async {
-    final teacherDoc = await _firestore
-        .collection('teachers')
-        .doc(section.teacherid)
-        .get();
+    final teacherDoc = await FirestoreCache.doc('teachers', section.teacherid);
 
     if (!mounted) return;
 
@@ -491,121 +492,112 @@ class _ManageSectionState extends State<ManageSection> {
   // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildToolbar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      color: Colors.white,
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 38,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search sections...',
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    size: 18,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.backgroundColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
+    return AdminListToolbar(
+      search: SizedBox(
+        height: 38,
+        child: TextField(
+          controller: _searchController,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: 'Search sections...',
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondaryColor,
+            ),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: AppTheme.textSecondaryColor,
+            ),
+            filled: true,
+            fillColor: AppTheme.backgroundColor,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 0,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppTheme.borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppTheme.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          _buildResultToggle(),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 38,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => AddSectionDialog(
-                    schoolyear: widget.schoolyear,
+        ),
+      ),
+      filters: [_buildResultToggle()],
+      actions: [
+        SizedBox(
+          height: 38,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => AddSectionDialog(
+                  schoolyear: widget.schoolyear,
+                  division: widget.division,
+                  school: widget.school,
+                ),
+              );
+            },
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Section'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 38,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CompareSection(
+                    schoolYear: widget.schoolyear,
                     division: widget.division,
                     school: widget.school,
                   ),
-                );
-              },
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add Section'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              );
+            },
+            icon: const Icon(Icons.compare_arrows, size: 16),
+            label: const Text('Compare Section'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.textPrimaryColor,
+              side: const BorderSide(color: AppTheme.borderColor),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 38,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CompareSection(
-                      schoolYear: widget.schoolyear,
-                      division: widget.division,
-                      school: widget.school,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.compare_arrows, size: 16),
-              label: const Text('Compare Section'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.textPrimaryColor,
-                side: const BorderSide(color: AppTheme.borderColor),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -634,10 +626,13 @@ class _ManageSectionState extends State<ManageSection> {
             ),
             const SizedBox(height: 4),
             FutureBuilder<DocumentSnapshot>(
-              future: _firestore
-                  .collection('teachers')
-                  .doc(section.teacherid)
-                  .get(),
+              future: memo(
+                ('inline1', section.teacherid),
+                () => _firestore
+                    .collection('teachers')
+                    .doc(section.teacherid)
+                    .get(),
+              ),
               builder: (context, snap) {
                 if (!snap.hasData) {
                   return const Text(
@@ -665,7 +660,11 @@ class _ManageSectionState extends State<ManageSection> {
 
             // ── Donut + legend ─────────────────────────────────────────
             StreamBuilder<Map<String, int>>(
-              stream: _fetchStudentReadLevels(section.id),
+              stream: memo((
+                '_fetchStudentReadLevels',
+                section.id,
+                _selectedReadType,
+              ), () => _fetchStudentReadLevels(section.id)),
               builder: (context, snap) {
                 final counts =
                     snap.data ??
@@ -835,7 +834,7 @@ class _ManageSectionState extends State<ManageSection> {
           _buildToolbar(),
           Expanded(
             child: StreamBuilder<List<Section>>(
-              stream: _fetchSections(),
+              stream: memo('_fetchSections', () => _fetchSections()),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(

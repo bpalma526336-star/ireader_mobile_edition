@@ -151,6 +151,7 @@ class _AddSentencesState extends State<AddSentences> {
         ).toMap(),
       );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
@@ -161,8 +162,10 @@ class _AddSentencesState extends State<AddSentences> {
         ),
       );
 
+      if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -173,9 +176,11 @@ class _AddSentencesState extends State<AddSentences> {
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -203,6 +208,7 @@ class _AddSentencesState extends State<AddSentences> {
     );
 
     if (shouldDiscard == true) {
+      if (!mounted) return;
       Navigator.pop(context);
     }
   }

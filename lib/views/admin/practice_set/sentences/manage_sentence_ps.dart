@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
@@ -20,7 +21,7 @@ class SentencePS extends StatefulWidget {
   State<SentencePS> createState() => _SentencePSState();
 }
 
-class _SentencePSState extends State<SentencePS> {
+class _SentencePSState extends State<SentencePS> with MemoMixin<SentencePS> {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   String selectedFilter = "All";
   String selectedCategory = "All";
@@ -297,7 +298,10 @@ class _SentencePSState extends State<SentencePS> {
 
               // PRACTICE SETS LIST
               StreamBuilder<QuerySnapshot>(
-                stream: _fetchSentencesPracticeSets(),
+                stream: memo(
+                  '_fetchSentencesPracticeSets',
+                  () => _fetchSentencesPracticeSets(),
+                ),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Center(child: Text("Error loading practice sets"));

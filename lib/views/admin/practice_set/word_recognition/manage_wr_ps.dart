@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
@@ -20,7 +21,7 @@ class ManageWRPS extends StatefulWidget {
   State<ManageWRPS> createState() => _ManageWRPSState();
 }
 
-class _ManageWRPSState extends State<ManageWRPS> {
+class _ManageWRPSState extends State<ManageWRPS> with MemoMixin<ManageWRPS> {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   String selectedFilter = "All";
   String selectedCategory = "All";
@@ -362,7 +363,10 @@ class _ManageWRPSState extends State<ManageWRPS> {
 
               /// ================= LIST =================
               StreamBuilder<QuerySnapshot>(
-                stream: _fetchWordRecognitionPracticeSets(),
+                stream: memo(
+                  '_fetchWordRecognitionPracticeSets',
+                  () => _fetchWordRecognitionPracticeSets(),
+                ),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());

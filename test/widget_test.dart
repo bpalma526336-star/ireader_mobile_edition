@@ -1,30 +1,46 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:ireader_mobile_edition/main.dart';
+import 'package:ireader_mobile_edition/core/reading_level.dart';
+import 'package:ireader_mobile_edition/core/safe_file_name.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('ReadingLevel.accuracyPercent', () {
+    test('computes rounded accuracy', () {
+      expect(ReadingLevel.accuracyPercent(totalWords: 100, miscues: 3), 97);
+    });
+    test('zero words does not divide by zero', () {
+      expect(ReadingLevel.accuracyPercent(totalWords: 0, miscues: 5), 0);
+    });
+    test('miscues above total clamp to 0%', () {
+      expect(ReadingLevel.accuracyPercent(totalWords: 10, miscues: 50), 0);
+    });
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('fromAccuracy bands', () {
+    expect(ReadingLevel.fromAccuracy(97), 'Independent');
+    expect(ReadingLevel.fromAccuracy(90), 'Instructional');
+    expect(ReadingLevel.fromAccuracy(89), 'Frustration');
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('overall covers every word/comprehension pair', () {
+    const levels = ['Independent', 'Instructional', 'Frustration'];
+    for (final w in levels) {
+      for (final c in levels) {
+        expect(levels, contains(ReadingLevel.overall(w, c)));
+      }
+    }
+    expect(ReadingLevel.overall('Independent', 'Frustration'), 'Instructional');
+    expect(ReadingLevel.overall('Frustration', 'Independent'), 'Instructional');
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('parseInt handles stored strings and doubles', () {
+    expect(ReadingLevel.parseInt('120'), 120);
+    expect(ReadingLevel.parseInt(99.6), 100);
+    expect(ReadingLevel.parseInt(null), 0);
+  });
+
+  test('safeFileName blocks path traversal', () {
+    expect(safeFileName('../../etc/passwd'), isNot(contains('/')));
+    expect(safeFileName('../x'), isNot(contains('..')));
+    expect(safeFileName(''), 'export');
   });
 }

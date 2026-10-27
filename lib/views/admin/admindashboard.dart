@@ -1,3 +1,4 @@
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,8 @@ class AdminDashboard extends StatefulWidget {
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState extends State<AdminDashboard>
+    with MemoMixin<AdminDashboard> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   SchoolYear? _startYear;
@@ -221,13 +223,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     // Fetch assessments in batches of 10 (Firestore whereIn limit).
     final Map<String, String> assessmentStageMap = {};
+    // Run all chunk queries at once instead of one after another.
+    final snapFutures1 = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
     for (int i = 0; i < yearIds.length; i += 10) {
       final end = (i + 10).clamp(0, yearIds.length);
       final chunk = yearIds.sublist(i, end);
-      final snap = await _firestore
-          .collection('assessment')
-          .where('schoolyearid', whereIn: chunk)
-          .get();
+      snapFutures1.add(
+        _firestore
+            .collection('assessment')
+            .where('schoolyearid', whereIn: chunk)
+            .get(),
+      );
+    }
+    for (final snap in await Future.wait(snapFutures1)) {
       for (final doc in snap.docs) {
         final title = doc.data()['assessmenttitle'] as String?;
         if (_assessmentStages.contains(title)) {
@@ -247,13 +255,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
     };
 
     Future<void> fetchAndCount(List<String> ids, String stage) async {
+      // Run all chunk queries at once instead of one after another.
+      final snapFutures2 = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
       for (int i = 0; i < ids.length; i += 10) {
         final end = (i + 10).clamp(0, ids.length);
         final chunk = ids.sublist(i, end);
-        final snap = await _firestore
-            .collection('overallresult')
-            .where('assessmentid', whereIn: chunk)
-            .get();
+        snapFutures2.add(
+          _firestore
+              .collection('overallresult')
+              .where('assessmentid', whereIn: chunk)
+              .get(),
+        );
+      }
+      for (final snap in await Future.wait(snapFutures2)) {
         for (final doc in snap.docs) {
           final level = doc.data()['readlevel'] as String? ?? '';
           if (_prePostCounts[stage]!.containsKey(level)) {
@@ -790,52 +804,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     ];
 
-    return Row(
-      children: List.generate(cards.length, (i) {
-        final c = cards[i];
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: i < cards.length - 1 ? 12 : 0),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.borderColor),
+    Widget card(int i) {
+      final c = cards[i];
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppTheme.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              c.label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.textSecondaryColor,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                c.value,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: c.color,
+                  height: 1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              c.sub,
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Four cards in a row on wide screens, a 2x2 grid on phones.
+    final perRow = MediaQuery.sizeOf(context).width < 760 ? 2 : cards.length;
+    return Column(
+      children: [
+        for (var r = 0; r < cards.length; r += perRow) ...[
+          if (r > 0) const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  c.label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondaryColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  c.value,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: c.color,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  c.sub,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                ),
+                for (var i = r; i < r + perRow && i < cards.length; i++) ...[
+                  if (i > r) const SizedBox(width: 12),
+                  Expanded(child: card(i)),
+                ],
               ],
             ),
           ),
-        );
-      }),
+        ],
+      ],
     );
   }
 
@@ -963,6 +998,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
         ],
       ),
+    );
+  }
+
+  /// Year pickers + action buttons. One row on wide screens; stacked on
+  /// phones, where the single row squeezed the pickers to nothing.
+  Widget _buildRangeControls({
+    required bool isCompact,
+    required Widget startDropdown,
+    required Widget endDropdown,
+    required List<Widget> buttons,
+    Widget? rangeInfo,
+  }) {
+    if (!isCompact) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(child: startDropdown),
+          const SizedBox(width: 12),
+          Expanded(child: endDropdown),
+          for (final b in buttons) ...[const SizedBox(width: 12), b],
+          const Spacer(),
+          if (rangeInfo != null) rangeInfo,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: startDropdown),
+            const SizedBox(width: 12),
+            Expanded(child: endDropdown),
+          ],
+        ),
+        for (final b in buttons) ...[const SizedBox(height: 8), b],
+        if (rangeInfo != null) ...[
+          const SizedBox(height: 10),
+          Align(alignment: Alignment.centerLeft, child: rangeInfo),
+        ],
+      ],
     );
   }
 
@@ -2647,7 +2724,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 Expanded(
                   child: StreamBuilder<List<SchoolYear>>(
-                    stream: _fetchSchoolYears(),
+                    stream: memo(
+                      '_fetchSchoolYears',
+                      () => _fetchSchoolYears(),
+                    ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return const Center(
@@ -2668,39 +2748,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Expanded(
-                                  child: _yearDropdown(
-                                    label: 'START YEAR',
-                                    value: _startYearId,
-                                    years: schoolYears,
-                                    onChanged: (v) => setState(() {
-                                      _startYearId = v;
-                                      _startYear = schoolYears.firstWhere(
-                                        (s) => s.id == v,
-                                        orElse: () => schoolYears.first,
-                                      );
-                                    }),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _yearDropdown(
-                                    label: 'END YEAR',
-                                    value: _endYearId,
-                                    years: schoolYears,
-                                    onChanged: (v) => setState(() {
-                                      _endYearId = v;
-                                      _endYear = schoolYears.firstWhere(
-                                        (s) => s.id == v,
-                                        orElse: () => schoolYears.last,
-                                      );
-                                    }),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
+                            _buildRangeControls(
+                              isCompact: screenWidth < 760,
+                              startDropdown: _yearDropdown(
+                                label: 'START YEAR',
+                                value: _startYearId,
+                                years: schoolYears,
+                                onChanged: (v) => setState(() {
+                                  _startYearId = v;
+                                  _startYear = schoolYears.firstWhere(
+                                    (s) => s.id == v,
+                                    orElse: () => schoolYears.first,
+                                  );
+                                }),
+                              ),
+                              endDropdown: _yearDropdown(
+                                label: 'END YEAR',
+                                value: _endYearId,
+                                years: schoolYears,
+                                onChanged: (v) => setState(() {
+                                  _endYearId = v;
+                                  _endYear = schoolYears.firstWhere(
+                                    (s) => s.id == v,
+                                    orElse: () => schoolYears.last,
+                                  );
+                                }),
+                              ),
+                              buttons: [
                                 SizedBox(
                                   height: 42,
                                   child: ElevatedButton(
@@ -2759,7 +2833,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     child: const Text('Generate'),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
                                 SizedBox(
                                   height: 42,
                                   child: ElevatedButton(
@@ -2787,8 +2860,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     child: const Text('Add School Year'),
                                   ),
                                 ),
-
-                                const SizedBox(width: 12),
                                 SizedBox(
                                   height: 42,
                                   child: ElevatedButton(
@@ -3055,31 +3126,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     child: const Text('Lists of School Years'),
                                   ),
                                 ),
-
-                                const Spacer(),
-                                if (_selectedRangeYears.isNotEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.backgroundColor,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: AppTheme.borderColor,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Showing ${_selectedRangeYears.first.schoolyearstart}-${_selectedRangeYears.first.schoolyearend} → ${_selectedRangeYears.last.schoolyearstart}-${_selectedRangeYears.last.schoolyearend}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppTheme.textSecondaryColor,
-                                      ),
-                                    ),
-                                  ),
                               ],
+                              rangeInfo: _selectedRangeYears.isEmpty
+                                  ? null
+                                  : Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.backgroundColor,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: AppTheme.borderColor,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Showing ${_selectedRangeYears.first.schoolyearstart}-${_selectedRangeYears.first.schoolyearend} → ${_selectedRangeYears.last.schoolyearstart}-${_selectedRangeYears.last.schoolyearend}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppTheme.textSecondaryColor,
+                                        ),
+                                      ),
+                                    ),
                             ),
                             const SizedBox(height: 14),
                             _buildResultToggle(),

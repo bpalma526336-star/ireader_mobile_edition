@@ -71,11 +71,11 @@ class _AddParentStudentState extends State<AddParentStudent> {
       ]);
 
       final studentsSnapshot =
-          results[0] as QuerySnapshot<Map<String, dynamic>>;
+          results[0];
       final sectionsSnapshot =
-          results[1] as QuerySnapshot<Map<String, dynamic>>;
+          results[1];
       final schoolYearsSnapshot =
-          results[2] as QuerySnapshot<Map<String, dynamic>>;
+          results[2];
 
       final students = studentsSnapshot.docs.map((doc) {
         return Student.fromMap(doc.id, doc.data());

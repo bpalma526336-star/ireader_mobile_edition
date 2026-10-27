@@ -24,121 +24,136 @@ class SelectPracticeSetScreen extends StatefulWidget {
 class _SelectPracticeSetScreenState extends State<SelectPracticeSetScreen> {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  int wrcount = 0;
-  int spcount = 0;
-  int slcount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    FirebaseFirestore.instance
-        .collection('wordrecognitionpracticeset')
-        .snapshots()
-        .listen((snapshot) {
-          setState(() {
-            wrcount = snapshot.docs.length;
-          });
-        });
-
-    FirebaseFirestore.instance
-        .collection('phrasesentencespracticeset')
-        .snapshots()
-        .listen((snapshot) {
-          setState(() {
-            spcount = snapshot.docs.length;
-          });
-        });
-
-    FirebaseFirestore.instance
-        .collection('storylinepracticeset')
-        .snapshots()
-        .listen((snapshot) {
-          setState(() {
-            slcount = snapshot.docs.length;
-          });
-        });
-  }
-
   Widget _practiceCard({
     required String title,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: Card(
-        margin: const EdgeInsets.only(right: 16),
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.white, color.withValues(alpha: 0.15)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    final (image, blurb, accent) = switch (title) {
+      'Word Recognition' => (
+        'assets/images/word_recognition.png',
+        'Spot and read words fast!',
+        AppTheme.primaryColor,
+      ),
+      'Phrase & Sentences' => (
+        'assets/images/phrase.png',
+        'Read short phrases and sentences.',
+        AppTheme.mintColor,
+      ),
+      _ => (
+        'assets/images/storyline.png',
+        'Enjoy stories and answer questions.',
+        AppTheme.grapeColor,
+      ),
+    };
+    return Material(
+      color: Colors.white,
+      borderRadius: AppTheme.radiusL,
+      child: InkWell(
+        borderRadius: AppTheme.radiusL,
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: AppTheme.radiusL,
+            border: Border.all(color: accent.withValues(alpha: 0.35), width: 2),
+            boxShadow: AppTheme.softShadow,
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: AppTheme.radiusM,
+                ),
+                child: Image.asset(
+                  image,
+                  errorBuilder: (_, _, _) =>
+                      Icon(icon, size: 40, color: accent),
+                ),
               ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(icon, size: 28, color: color),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      blurb,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textSecondaryColor,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  "Manage Practice Sets",
-                  style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+              ),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  "School Year: ${widget.schoolyear.schoolyearstart} - ${widget.schoolyear.schoolyearend}",
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 4),
-                Text("Section: ${widget.section.sectionname}"),
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: onTap,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: const Text("Manage"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _hero() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        gradient: AppTheme.heroGradient,
+        borderRadius: AppTheme.radiusL,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Practice Time! ✨',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${widget.section.sectionname} · SY ${widget.schoolyear.schoolyearstart}-${widget.schoolyear.schoolyearend}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.92),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          const Icon(Icons.extension_rounded, color: Colors.white, size: 44),
+        ],
       ),
     );
   }
@@ -146,10 +161,12 @@ class _SelectPracticeSetScreenState extends State<SelectPracticeSetScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: AppTheme.backgroundColor),
+      appBar: AppBar(title: const Text('Practice Sets')),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
+          _hero(),
+          const SizedBox(height: 18),
           _practiceCard(
             title: 'Word Recognition',
             icon: Icons.spellcheck,

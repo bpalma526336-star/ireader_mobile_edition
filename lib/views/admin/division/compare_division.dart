@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:ireader_mobile_edition/widgets/compare_card_pair.dart';
 import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
@@ -133,13 +134,21 @@ class _CompareDivisionState extends State<CompareDivision> {
           division.id: {'Frustration': 0, 'Instructional': 0, 'Independent': 0},
       };
 
+      // Run all chunk queries at once instead of one after another.
+      final resultsSnapshotFutures1 =
+          <Future<QuerySnapshot<Map<String, dynamic>>>>[];
       for (var index = 0; index < assessmentIds.length; index += 10) {
         final end = math.min(index + 10, assessmentIds.length);
-        final resultsSnapshot = await _firestore
-            .collection('overallresult')
-            .where('assessmentid', whereIn: assessmentIds.sublist(index, end))
-            .get();
-
+        resultsSnapshotFutures1.add(
+          _firestore
+              .collection('overallresult')
+              .where('assessmentid', whereIn: assessmentIds.sublist(index, end))
+              .get(),
+        );
+      }
+      for (final resultsSnapshot in await Future.wait(
+        resultsSnapshotFutures1,
+      )) {
         for (final resultDoc in resultsSnapshot.docs) {
           final result = resultDoc.data();
           final studentId = (result['studentid'] ?? '').toString();
@@ -361,145 +370,143 @@ class _CompareDivisionState extends State<CompareDivision> {
   Widget _divisionCard(Division division, Color color, {String label = 'A'}) {
     final counts = _countsFor(division.id);
     final total = _total(counts);
-    return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.18)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.10),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Gradient header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withValues(alpha: 0.72)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(13),
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.10),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gradient header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color, color.withValues(alpha: 0.72)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'Division $label',
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(13),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
                         ),
-                        const SizedBox(height: 7),
-                        Text(
-                          division.name,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Division $label',
                           style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '$total',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'total',
-                          style: TextStyle(
                             fontSize: 9,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
-                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.6,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        division.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$total',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'total',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            // Metrics body
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  _metric(
-                    'Frustration',
-                    counts['Frustration'] ?? 0,
-                    AppTheme.levelFrustration,
-                    total: total,
-                  ),
-                  const SizedBox(height: 10),
-                  _metric(
-                    'Instructional',
-                    counts['Instructional'] ?? 0,
-                    AppTheme.levelInstructional,
-                    total: total,
-                  ),
-                  const SizedBox(height: 10),
-                  _metric(
-                    'Independent',
-                    counts['Independent'] ?? 0,
-                    AppTheme.levelIndependent,
-                    total: total,
-                  ),
-                ],
-              ),
+          ),
+          // Metrics body
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                _metric(
+                  'Frustration',
+                  counts['Frustration'] ?? 0,
+                  AppTheme.levelFrustration,
+                  total: total,
+                ),
+                const SizedBox(height: 10),
+                _metric(
+                  'Instructional',
+                  counts['Instructional'] ?? 0,
+                  AppTheme.levelInstructional,
+                  total: total,
+                ),
+                const SizedBox(height: 10),
+                _metric(
+                  'Independent',
+                  counts['Independent'] ?? 0,
+                  AppTheme.levelIndependent,
+                  total: total,
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: _analyticsInsight(division.name, counts),
-            ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: _analyticsInsight(division.name, counts),
+          ),
+        ],
       ),
     );
   }
@@ -779,7 +786,12 @@ class _CompareDivisionState extends State<CompareDivision> {
           : _divisions.isEmpty
           ? const Center(child: Text('No active divisions found.'))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.paddingOf(context).bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -854,6 +866,8 @@ class _CompareDivisionState extends State<CompareDivision> {
                                           value: year.id,
                                           child: Text(
                                             '${year.schoolyearstart}–${year.schoolyearend}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               fontSize: 13,
                                             ),
@@ -874,6 +888,8 @@ class _CompareDivisionState extends State<CompareDivision> {
                                           value: division.id,
                                           child: Text(
                                             division.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               fontSize: 13,
                                             ),
@@ -919,6 +935,8 @@ class _CompareDivisionState extends State<CompareDivision> {
                                           value: division.id,
                                           child: Text(
                                             division.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               fontSize: 13,
                                             ),
@@ -1020,72 +1038,79 @@ class _CompareDivisionState extends State<CompareDivision> {
                             const Divider(height: 1),
                             const SizedBox(height: 14),
                             Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(
-                                    color: AppTheme.borderColor,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: AppTheme.borderColor,
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: _comparisonTypes.map((type) {
-                                    final selected = _selectedType == type;
-                                    return GestureDetector(
-                                      onTap: selected
-                                          ? null
-                                          : () async {
-                                              setState(
-                                                () => _selectedType = type,
-                                              );
-                                              await _runComparison();
-                                              if (!mounted) return;
-                                            },
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 180,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 18,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: selected
-                                              ? AppTheme.primaryColor
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(
-                                            30,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: _comparisonTypes.map((type) {
+                                      final selected = _selectedType == type;
+                                      return GestureDetector(
+                                        onTap: selected
+                                            ? null
+                                            : () async {
+                                                setState(
+                                                  () => _selectedType = type,
+                                                );
+                                                await _runComparison();
+                                                if (!mounted) return;
+                                              },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 180,
                                           ),
-                                          boxShadow: selected
-                                              ? [
-                                                  BoxShadow(
-                                                    color: AppTheme.primaryColor
-                                                        .withValues(
-                                                          alpha: 0.25,
-                                                        ),
-                                                    blurRadius: 6,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ]
-                                              : [],
-                                        ),
-                                        child: Text(
-                                          type,
-                                          style: TextStyle(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                            horizontal: 18,
+                                          ),
+                                          decoration: BoxDecoration(
                                             color: selected
-                                                ? Colors.white
-                                                : AppTheme.textSecondaryColor,
-                                            fontWeight: selected
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                            fontSize: 12,
+                                                ? AppTheme.primaryColor
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
+                                            boxShadow: selected
+                                                ? [
+                                                    BoxShadow(
+                                                      color: AppTheme
+                                                          .primaryColor
+                                                          .withValues(
+                                                            alpha: 0.25,
+                                                          ),
+                                                      blurRadius: 6,
+                                                      offset: const Offset(
+                                                        0,
+                                                        2,
+                                                      ),
+                                                    ),
+                                                  ]
+                                                : [],
+                                          ),
+                                          child: Text(
+                                            type,
+                                            style: TextStyle(
+                                              color: selected
+                                                  ? Colors.white
+                                                  : AppTheme.textSecondaryColor,
+                                              fontWeight: selected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -1116,7 +1141,10 @@ class _CompareDivisionState extends State<CompareDivision> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text(
                                 'Division Comparison',
@@ -1126,7 +1154,6 @@ class _CompareDivisionState extends State<CompareDivision> {
                                   color: AppTheme.textPrimaryColor,
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -1150,24 +1177,21 @@ class _CompareDivisionState extends State<CompareDivision> {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (division1 != null)
-                                _divisionCard(
-                                  division1,
-                                  AppTheme.primaryColor,
-                                  label: 'A',
-                                ),
-                              if (division1 != null && division2 != null)
-                                const SizedBox(width: 12),
-                              if (division2 != null)
-                                _divisionCard(
-                                  division2,
-                                  const Color(0xFF3B82F6),
-                                  label: 'B',
-                                ),
-                            ],
+                          CompareCardPair(
+                            first: division1 != null
+                                ? _divisionCard(
+                                    division1,
+                                    AppTheme.primaryColor,
+                                    label: 'A',
+                                  )
+                                : null,
+                            second: division2 != null
+                                ? _divisionCard(
+                                    division2,
+                                    const Color(0xFF3B82F6),
+                                    label: 'B',
+                                  )
+                                : null,
                           ),
                         ],
                       ),

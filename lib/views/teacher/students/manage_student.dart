@@ -1,4 +1,5 @@
-import 'dart:convert';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
@@ -10,7 +11,6 @@ import 'package:ireader_mobile_edition/views/teacher/students/add_student.dart';
 import 'package:ireader_mobile_edition/views/teacher/students/add_student_dialog.dart';
 import 'package:ireader_mobile_edition/views/teacher/students/student_profile.dart';
 import 'package:ireader_mobile_edition/shared/import_students_dialog.dart';
-import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 
 class TeacherManageStudentScreen extends StatefulWidget {
   final SchoolYear schoolyear;
@@ -29,8 +29,8 @@ class TeacherManageStudentScreen extends StatefulWidget {
       _TeacherManageStudentScreenState();
 }
 
-class _TeacherManageStudentScreenState
-    extends State<TeacherManageStudentScreen> {
+class _TeacherManageStudentScreenState extends State<TeacherManageStudentScreen>
+    with MemoMixin<TeacherManageStudentScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   String? _teacherName;
@@ -48,10 +48,10 @@ class _TeacherManageStudentScreenState
   }
 
   Future<void> _fetchTeacherName() async {
-    final teacherSnapshot = await firestore
-        .collection('teachers')
-        .doc(widget.section.teacherid)
-        .get();
+    final teacherSnapshot = await FirestoreCache.doc(
+      'teachers',
+      widget.section.teacherid,
+    );
     if (teacherSnapshot.exists && mounted) {
       final d = teacherSnapshot.data()!;
       setState(() {
@@ -746,13 +746,22 @@ class _TeacherManageStudentScreenState
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('students')
-            .where('sectionid', isEqualTo: widget.section.id)
-            .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-            .where('schoolid', isEqualTo: widget.teacher.schoolid)
-            .where('divisionid', isEqualTo: widget.teacher.divisionid)
-            .snapshots(),
+        stream: memo(
+          (
+            'inline1',
+            widget.schoolyear.id,
+            widget.section.id,
+            widget.teacher.divisionid,
+            widget.teacher.schoolid,
+          ),
+          () => FirebaseFirestore.instance
+              .collection('students')
+              .where('sectionid', isEqualTo: widget.section.id)
+              .where('schoolyearid', isEqualTo: widget.schoolyear.id)
+              .where('schoolid', isEqualTo: widget.teacher.schoolid)
+              .where('divisionid', isEqualTo: widget.teacher.divisionid)
+              .snapshots(),
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(

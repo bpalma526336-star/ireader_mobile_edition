@@ -1,22 +1,21 @@
+import 'package:ireader_mobile_edition/core/safe_file_name.dart';
+import 'package:ireader_mobile_edition/core/firestore_cache.dart';
+import 'package:ireader_mobile_edition/core/memo.dart';
 import 'dart:io';
 import 'dart:math' as math;
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ireader_mobile_edition/model/readingcoordinator.dart';
 import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
-import 'package:ireader_mobile_edition/model/teacher.dart';
 import 'package:ireader_mobile_edition/theme.dart';
-import 'package:ireader_mobile_edition/views/admin/section/edit_section.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/practice_set/select_practice_set.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/sections/compare_section.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/students/manage_student.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' hide Column, Row, Border;
 
 class RCManageSection extends StatefulWidget {
@@ -33,7 +32,8 @@ class RCManageSection extends StatefulWidget {
   State<RCManageSection> createState() => _RCManageSectionState();
 }
 
-class _RCManageSectionState extends State<RCManageSection> {
+class _RCManageSectionState extends State<RCManageSection>
+    with MemoMixin<RCManageSection> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   final List<String> studentreads = ["Overall Result", "Comprehension Result"];
@@ -183,22 +183,25 @@ class _RCManageSectionState extends State<RCManageSection> {
         .where('schoolyearid', isEqualTo: widget.schoolyear.id)
         .get();
 
-    for (var sectionDoc in sectionsSnap.docs) {
-      final section = Section.fromMap(sectionDoc.id, sectionDoc.data());
+    // Fetch every section's teacher and students in parallel instead of
+    // one section at a time.
+    final perSection = await Future.wait(
+      sectionsSnap.docs.map((sectionDoc) async {
+        final section = Section.fromMap(sectionDoc.id, sectionDoc.data());
+        final teacher = FirestoreCache.doc('teachers', section.teacherid);
+        final students = _firestore
+            .collection('students')
+            .where('sectionid', isEqualTo: section.id)
+            .where('schoolyearid', isEqualTo: widget.schoolyear.id)
+            .get();
+        return (section, await teacher, await students);
+      }),
+    );
 
-      final teacherSnap = await _firestore
-          .collection('teachers')
-          .doc(section.teacherid)
-          .get();
+    for (final (section, teacherSnap, studentsSnap) in perSection) {
       final teacherName = teacherSnap.exists
           ? "${teacherSnap['firstname']} ${teacherSnap['lastname']}"
           : 'Unknown';
-
-      final studentsSnap = await _firestore
-          .collection('students')
-          .where('sectionid', isEqualTo: section.id)
-          .where('schoolyearid', isEqualTo: widget.schoolyear.id)
-          .get();
 
       for (var studentDoc in studentsSnap.docs) {
         final student = Student.fromMap(studentDoc.id, studentDoc.data());
@@ -255,10 +258,7 @@ class _RCManageSectionState extends State<RCManageSection> {
       ..hAlign = HAlignType.center
       ..vAlign = VAlignType.center;
 
-    final teacherSnap = await _firestore
-        .collection('teachers')
-        .doc(section.teacherid)
-        .get();
+    final teacherSnap = await FirestoreCache.doc('teachers', section.teacherid);
     final teacherName = teacherSnap.exists
         ? "${teacherSnap['firstname']} ${teacherSnap['middlename']} ${teacherSnap['lastname']}"
         : 'Unknown';
@@ -325,7 +325,7 @@ class _RCManageSectionState extends State<RCManageSection> {
 
     final directory = (await getApplicationDocumentsDirectory()).path;
     final filePath =
-        '$directory/Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx';
+        '$directory/Phil-IRI_Student_List(Stage_2)_${safeFileName(section.sectionname)}.xlsx';
 
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);
@@ -336,7 +336,7 @@ class _RCManageSectionState extends State<RCManageSection> {
     //   )
     //   ..setAttribute(
     //     'download',
-    //     'Phil-IRI_Student_List(Stage_2)_${section.sectionname}.xlsx',
+    //     'Phil-IRI_Student_List(Stage_2)_${safeFileName(section.sectionname)}.xlsx',
     //   )
     //   ..click();
   }
@@ -559,10 +559,13 @@ class _RCManageSectionState extends State<RCManageSection> {
             ),
             const SizedBox(height: 4),
             FutureBuilder<DocumentSnapshot>(
-              future: _firestore
-                  .collection('teachers')
-                  .doc(section.teacherid)
-                  .get(),
+              future: memo(
+                ('inline1', section.teacherid),
+                () => _firestore
+                    .collection('teachers')
+                    .doc(section.teacherid)
+                    .get(),
+              ),
               builder: (context, snap) {
                 if (!snap.hasData) {
                   return const Text(
@@ -590,7 +593,11 @@ class _RCManageSectionState extends State<RCManageSection> {
 
             // ── Donut + legend ─────────────────────────────────────────
             StreamBuilder<Map<String, int>>(
-              stream: _fetchStudentReadLevels(section.id),
+              stream: memo((
+                '_fetchStudentReadLevels',
+                section.id,
+                _selectedReadType,
+              ), () => _fetchStudentReadLevels(section.id)),
               builder: (context, snap) {
                 final counts =
                     snap.data ??
@@ -778,7 +785,7 @@ class _RCManageSectionState extends State<RCManageSection> {
           _buildToolbar(),
           Expanded(
             child: StreamBuilder<List<Section>>(
-              stream: _fetchSections(),
+              stream: memo('_fetchSections', () => _fetchSections()),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
