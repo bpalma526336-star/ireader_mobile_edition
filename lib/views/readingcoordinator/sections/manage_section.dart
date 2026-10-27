@@ -10,6 +10,7 @@ import 'package:ireader_mobile_edition/model/schoolyear.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
 import 'package:ireader_mobile_edition/model/student.dart';
 import 'package:ireader_mobile_edition/theme.dart';
+import 'package:ireader_mobile_edition/widgets/admin_list.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/practice_set/select_practice_set.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/sections/compare_section.dart';
 import 'package:ireader_mobile_edition/views/readingcoordinator/students/manage_student.dart';
@@ -119,7 +120,11 @@ class _RCManageSectionState extends State<RCManageSection>
             }
           }
 
-          return {'Instructional': instructional, 'Independent': independent};
+          return {
+            'Frustration': frustration,
+            'Instructional': instructional,
+            'Independent': independent,
+          };
         });
   }
 
@@ -366,7 +371,7 @@ class _RCManageSectionState extends State<RCManageSection>
 
   // ─── Result type toggle ────────────────────────────────────────────────────
 
-  Widget _buildResultToggle() {
+  Widget _buildResultToggle({bool expand = false}) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -374,10 +379,10 @@ class _RCManageSectionState extends State<RCManageSection>
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: studentreads.map((type) {
           final isSelected = _selectedReadType == type;
-          return GestureDetector(
+          final segment = GestureDetector(
             onTap: () => setState(() => _selectedReadType = type),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
@@ -388,6 +393,9 @@ class _RCManageSectionState extends State<RCManageSection>
               ),
               child: Text(
                 type,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: isSelected ? Colors.white : Colors.black54,
                   fontWeight: FontWeight.w600,
@@ -396,6 +404,7 @@ class _RCManageSectionState extends State<RCManageSection>
               ),
             ),
           );
+          return expand ? Expanded(child: segment) : segment;
         }).toList(),
       ),
     );
@@ -453,82 +462,96 @@ class _RCManageSectionState extends State<RCManageSection>
   // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildToolbar() {
+    final search = SizedBox(
+      height: 38,
+      child: TextField(
+        controller: _searchController,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: 'Search sections...',
+          hintStyle: const TextStyle(
+            fontSize: 13,
+            color: AppTheme.textSecondaryColor,
+          ),
+          prefixIcon: const Icon(
+            Icons.search,
+            size: 18,
+            color: AppTheme.textSecondaryColor,
+          ),
+          filled: true,
+          fillColor: AppTheme.backgroundColor,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 0,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppTheme.borderColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppTheme.borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(
+              color: AppTheme.primaryColor,
+              width: 1.5,
+            ),
+          ),
+        ),
+      ),
+    );
+    final compareButton = OutlinedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CompareSection(
+              readingcoordinator: widget.readingcoordinator,
+              schoolYear: widget.schoolyear,
+            ),
+          ),
+        );
+      },
+      icon: const Icon(Icons.compare_arrows, size: 16),
+      label: const Text('Compare Sections'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.primaryColor,
+        side: const BorderSide(color: AppTheme.borderColor),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+
+    // On phones the search, toggle and button don't fit on one line.
+    if (isCompactAdminList(context)) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            search,
+            const SizedBox(height: 10),
+            _buildResultToggle(expand: true),
+            const SizedBox(height: 10),
+            SizedBox(height: 38, child: compareButton),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
       color: Colors.white,
       child: Row(
         children: [
-          Expanded(
-            child: SizedBox(
-              height: 38,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search sections...',
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    size: 18,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.backgroundColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: search),
           const SizedBox(width: 12),
           _buildResultToggle(),
           const SizedBox(width: 12),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CompareSection(
-                    readingcoordinator: widget.readingcoordinator,
-                    schoolYear: widget.schoolyear,
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.compare_arrows, size: 16),
-            label: const Text('Compare Sections'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-              side: const BorderSide(color: AppTheme.borderColor),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          compareButton,
         ],
       ),
     );
@@ -834,7 +857,9 @@ class _RCManageSectionState extends State<RCManageSection>
                 }
 
                 return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  padding: screenWidth <= 600
+                      ? const EdgeInsets.fromLTRB(16, 12, 16, 16)
+                      : const EdgeInsets.fromLTRB(24, 16, 24, 24),
                   gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: screenWidth <= 600 ? 600 : 380,
                     crossAxisSpacing: 16,
