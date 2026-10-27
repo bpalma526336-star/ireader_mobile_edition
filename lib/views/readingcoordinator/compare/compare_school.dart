@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:ireader_mobile_edition/widgets/compare_card_pair.dart';
 import 'package:ireader_mobile_edition/model/division.dart';
 import 'package:ireader_mobile_edition/model/school.dart';
 import 'package:ireader_mobile_edition/model/section.dart';
@@ -367,7 +368,11 @@ class _CompareSchoolState extends State<CompareSchool> {
               .map(
                 (school) => DropdownMenuItem(
                   value: school.id,
-                  child: Text(school.name),
+                  child: Text(
+                    school.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               )
               .toList(),
@@ -384,125 +389,123 @@ class _CompareSchoolState extends State<CompareSchool> {
     String label,
   ) {
     final total = counts.values.fold(0, (sum, value) => sum + value);
-    return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.18)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.10),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.10),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color, color.withValues(alpha: 0.72)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(13),
+              ),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withValues(alpha: 0.72)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'School $label',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        school.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(13),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$total',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'total',
+                        style: TextStyle(fontSize: 9, color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'School $label',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          school.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '$total',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'total',
-                          style: TextStyle(fontSize: 9, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  _metricRow(
-                    'Frustration',
-                    counts['Frustration'] ?? 0,
-                    AppTheme.levelFrustration,
-                    total,
-                  ),
-                  const SizedBox(height: 10),
-                  _metricRow(
-                    'Instructional',
-                    counts['Instructional'] ?? 0,
-                    AppTheme.levelInstructional,
-                    total,
-                  ),
-                  const SizedBox(height: 10),
-                  _metricRow(
-                    'Independent',
-                    counts['Independent'] ?? 0,
-                    AppTheme.levelIndependent,
-                    total,
-                  ),
-                  const SizedBox(height: 14),
-                  _analyticsInsight(school.name, counts),
-                ],
-              ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                _metricRow(
+                  'Frustration',
+                  counts['Frustration'] ?? 0,
+                  AppTheme.levelFrustration,
+                  total,
+                ),
+                const SizedBox(height: 10),
+                _metricRow(
+                  'Instructional',
+                  counts['Instructional'] ?? 0,
+                  AppTheme.levelInstructional,
+                  total,
+                ),
+                const SizedBox(height: 10),
+                _metricRow(
+                  'Independent',
+                  counts['Independent'] ?? 0,
+                  AppTheme.levelIndependent,
+                  total,
+                ),
+                const SizedBox(height: 14),
+                _analyticsInsight(school.name, counts),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -548,7 +551,12 @@ class _CompareSchoolState extends State<CompareSchool> {
           : _schools.isEmpty
           ? const Center(child: Text('No schools found for this division.'))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.paddingOf(context).bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -748,56 +756,59 @@ class _CompareSchoolState extends State<CompareSchool> {
                             const Divider(height: 1),
                             const SizedBox(height: 14),
                             Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(
-                                    color: AppTheme.borderColor,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: AppTheme.borderColor,
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: _comparisonTypes.map((type) {
-                                    final selected = _selectedType == type;
-                                    return GestureDetector(
-                                      onTap: () async {
-                                        if (selected) return;
-                                        setState(() => _selectedType = type);
-                                        await _runComparison();
-                                      },
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 180,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 18,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: selected
-                                              ? AppTheme.primaryColor
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(
-                                            30,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: _comparisonTypes.map((type) {
+                                      final selected = _selectedType == type;
+                                      return GestureDetector(
+                                        onTap: () async {
+                                          if (selected) return;
+                                          setState(() => _selectedType = type);
+                                          await _runComparison();
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 180,
                                           ),
-                                        ),
-                                        child: Text(
-                                          type,
-                                          style: TextStyle(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                            horizontal: 18,
+                                          ),
+                                          decoration: BoxDecoration(
                                             color: selected
-                                                ? Colors.white
-                                                : AppTheme.textSecondaryColor,
-                                            fontWeight: selected
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                            fontSize: 12,
+                                                ? AppTheme.primaryColor
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            type,
+                                            style: TextStyle(
+                                              color: selected
+                                                  ? Colors.white
+                                                  : AppTheme.textSecondaryColor,
+                                              fontWeight: selected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -819,7 +830,10 @@ class _CompareSchoolState extends State<CompareSchool> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text(
                                 'School Comparison',
@@ -828,7 +842,6 @@ class _CompareSchoolState extends State<CompareSchool> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Text(
                                 _selectedType,
                                 style: const TextStyle(
@@ -839,26 +852,23 @@ class _CompareSchoolState extends State<CompareSchool> {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (school1 != null)
-                                _card(
-                                  school1,
-                                  _countsFor(school1.id),
-                                  AppTheme.primaryColor,
-                                  'A',
-                                ),
-                              if (school1 != null && school2 != null)
-                                const SizedBox(width: 12),
-                              if (school2 != null)
-                                _card(
-                                  school2,
-                                  _countsFor(school2.id),
-                                  const Color(0xFF3B82F6),
-                                  'B',
-                                ),
-                            ],
+                          CompareCardPair(
+                            first: school1 != null
+                                ? _card(
+                                    school1,
+                                    _countsFor(school1.id),
+                                    AppTheme.primaryColor,
+                                    'A',
+                                  )
+                                : null,
+                            second: school2 != null
+                                ? _card(
+                                    school2,
+                                    _countsFor(school2.id),
+                                    const Color(0xFF3B82F6),
+                                    'B',
+                                  )
+                                : null,
                           ),
                         ],
                       ),
